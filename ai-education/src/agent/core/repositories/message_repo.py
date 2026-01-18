@@ -5,7 +5,7 @@ from agent.core.entities.chat_models import Message
 from agent.core.repositories.base_repo import BaseRepository
 
 
-class MessageRepository(BaseRepository):
+class MessageRepository(BaseRepository[Message]):
     """消息数据访问层"""
 
     def __init__(self, db: Session):

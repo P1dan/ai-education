@@ -1,11 +1,11 @@
-# src/api/history_routes.py
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.utils.db_utils import get_db
 
 router = APIRouter()
+
+# todo 请求的时候用对应的定义在schemas下的类替换，目前更直观显示参数
 
 @router.get("/threads")
 async def list_threads(
@@ -44,6 +44,8 @@ async def get_messages(
         offset=offset,
         order="asc"  # 时间正序，最早的在前
     )
+
+    # todo 用一个通用的响应类封装消息
 
     return {
         "thread_id": thread_id,

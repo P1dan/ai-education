@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from datetime import datetime, timezone
 import uuid
-
 from agent.core.entities.chat_models import ConversationThread
 from agent.core.repositories.base_repo import BaseRepository
 

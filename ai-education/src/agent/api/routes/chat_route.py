@@ -20,6 +20,7 @@ async def get_chat_agent():
     """获取或创建聊天智能体（单例）"""
     # todo 全局单例，后续可能需要进行加锁，防止并发创建多个
     global _chat_agent
+
     if _chat_agent is None:
         _chat_agent = await create_chat_graph()
     return _chat_agent
@@ -79,7 +80,7 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
         content=ai_response,
         role="assistant",
         message_id=f"{thread.thread_id}_ai_{int(time.time())}",
-        model="gpt-4"  # 根据实际模型填写
+        model="gpt-4"  # 根据实际模型填写 todo 将此处的模型名称与对应模型正确对应，而非硬编码
     )
 
     # 6. 更新消息计数
@@ -87,6 +88,8 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
     # 7. 提交事务
     db.commit()
+
+    # todo 返回的时候用统一的响应类封装一下
 
     return {
         "response": ai_response,
