@@ -1,3 +1,5 @@
+import asyncio
+import sys
 from langgraph.constants import START, END
 from langgraph.graph import MessagesState, StateGraph
 from langgraph.store.memory import InMemoryStore
@@ -47,7 +49,11 @@ async def create_chat_graph():
     graph = builder.compile(checkpointer=checkpointer)
     return graph
 
+
 # langgraph dev需要异步
-# chat_agent = asyncio.run(create_chat_graph())
+# if sys.platform == "win32":
+#     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+#
+# chat_graph = asyncio.run(create_chat_graph())
 
 
