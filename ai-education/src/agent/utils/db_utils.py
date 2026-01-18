@@ -71,7 +71,7 @@ def get_db() -> Generator[Session, None, None]:
     try:
         yield db
     finally:
-        db.close()
+        db.close()  # 路由结束后关闭连接
 
 
 @contextmanager

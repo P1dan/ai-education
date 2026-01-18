@@ -28,6 +28,8 @@ async def get_chat_agent():
 
 router = APIRouter()
 
+# todo 将路由中的逻辑封装到service服务层
+
 @router.post("/chat")
 async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     # 1. 直接创建Repository实例
