@@ -25,7 +25,7 @@ class ConversationThread(Base):
     title = Column(String(500), nullable=True)
     message_count = Column(Integer, default=0)
 
-    # 时间戳
+    # 时间戳 用的标准utc的时间，所以会比北京时间差大概八个小时
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))

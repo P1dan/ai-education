@@ -9,6 +9,30 @@ from agent.core.entities.chat_models import ConversationThread
 from agent.core.repositories.base_repo import BaseRepository
 
 
+def _generate_title(first_message: str, max_length: int = 30) -> str:
+    """
+    根据第一条消息生成标题
+
+    Args:
+        first_message: 第一条消息内容
+        max_length: 标题最大长度
+
+    Returns:
+        生成的标题
+    """
+    # 移除换行和多余空格
+    cleaned = ' '.join(first_message.strip().split())
+
+    if not cleaned:
+        return "新对话"
+
+    # 截断到指定长度
+    if len(cleaned) <= max_length:
+        return cleaned
+
+    return cleaned[:max_length] + "..."
+
+
 class ThreadRepository(BaseRepository[ConversationThread]):
     """
     对话线程Repository
@@ -52,7 +76,7 @@ class ThreadRepository(BaseRepository[ConversationThread]):
         # 如果没传title，但传了第一条消息，可以用消息生成标题
         if not title and 'first_message' in kwargs:
             first_message = kwargs.pop('first_message')
-            title = self._generate_title(first_message)
+            title = _generate_title(first_message)
 
         thread = ConversationThread(
             thread_id=thread_id,
@@ -184,25 +208,3 @@ class ThreadRepository(BaseRepository[ConversationThread]):
             desc(ConversationThread.updated_at)
         ).limit(limit).all()
 
-    def _generate_title(self, first_message: str, max_length: int = 30) -> str:
-        """
-        根据第一条消息生成标题
-
-        Args:
-            first_message: 第一条消息内容
-            max_length: 标题最大长度
-
-        Returns:
-            生成的标题
-        """
-        # 移除换行和多余空格
-        cleaned = ' '.join(first_message.strip().split())
-
-        if not cleaned:
-            return "新对话"
-
-        # 截断到指定长度
-        if len(cleaned) <= max_length:
-            return cleaned
-
-        return cleaned[:max_length] + "..."

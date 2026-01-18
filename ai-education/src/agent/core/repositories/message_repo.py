@@ -1,8 +1,6 @@
-# src/core/repository/message_repo.py
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
-from datetime import datetime, timezone
 from agent.core.entities.chat_models import Message
 from agent.core.repositories.base_repo import BaseRepository
 
@@ -47,7 +45,7 @@ class MessageRepository(BaseRepository):
 
         # 分页
         messages = query.offset(offset).limit(limit).all()
-        return messages  # 这应该返回 List[Message] 而不是 List[Type[Message]]
+        return messages
 
     def get_message_count_by_thread(self, thread_id: str) -> int:
         """获取指定线程的消息数量"""
