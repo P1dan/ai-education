@@ -22,18 +22,22 @@
 - **缓存**: Redis（计划中）
 - **部署**: Docker（计划中）
 
-## 即将支持（画饼）
+## 即将支持
 
 - 🧠 多模态输入（图像、PDF、音视频）
 - 👥 多角色教学智能体（教师/助教/答疑机器人）
 - 🌐 Web 前端界面（React/Vue）
 - 🔐 用户认证与权限管理
-## 启动过程
 
+## 启动过程
 1. 为项目安装python环境，版本3.11及以上
-2. 进入ai-education目录
-3. pip install -e .
-4. 将src标记为项目根目录（IDEA）
-5. pip install -r requirements.txt
-6. 将.env.example改名为.env，然后填入自己的api-key，数据库账号密码等
-7. 启动src/agent/start.py文件
+   git clone ....
+   cd 你的文件夹
+
+2. 安装可编辑包 + 依赖
+pip install -e ./ai-education
+pip install -r requirements.txt
+
+3. 启动
+cd ai-education
+python start.py
