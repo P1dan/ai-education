@@ -38,6 +38,8 @@
 pip install -r requirements.txt
 
 3. 启动
-将.env.example文件中的配置填写好然后：
+将.env.example文件改名为.env并填写或更换对应的API_KEY
+
+4. 进入agent目录启动start.py
 cd ai-education/src/agent
 python start.py
