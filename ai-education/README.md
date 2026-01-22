@@ -32,12 +32,12 @@
 ## 启动过程
 1. 为项目安装python环境，版本3.11及以上
    git clone ....
-   cd 你的文件夹
+   cd ai-education
 
 2. 安装可编辑包 + 依赖
-pip install -e ./ai-education
 pip install -r requirements.txt
 
 3. 启动
-cd ai-education
+将.env.example文件中的配置填写好然后：
+cd ai-education/src/agent
 python start.py
