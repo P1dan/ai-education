@@ -1,4 +1,4 @@
-# src/utils/db_utils.py
+# src/utils/db_util.py
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager

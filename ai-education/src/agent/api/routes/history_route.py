@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from agent.core.repositories import ThreadRepository, MessageRepository
-from agent.utils.db_utils import get_db
+from agent.utils.db_util import get_db
 
 router = APIRouter()
 

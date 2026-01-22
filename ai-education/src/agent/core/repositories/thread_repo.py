@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import uuid
 from agent.core.entities.chat_models import ConversationThread
 from agent.core.repositories.base_repo import BaseRepository
+from agent.utils.log_util import log
 
 
 def _generate_title(first_message: str, max_length: int = 30) -> str:
@@ -87,7 +88,6 @@ class ThreadRepository(BaseRepository[ConversationThread]):
             # updated_at=datetime.now(timezone.utc),
             **kwargs
         )
-
         self.db.add(thread)
         return thread
 

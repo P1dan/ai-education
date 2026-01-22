@@ -1,6 +1,6 @@
+from langgraph_sdk.schema import SearchItemsResponse
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
 
 
 class ChatRequest(BaseModel):
@@ -15,6 +15,7 @@ class ChatResponse(BaseModel):
     response: str
     thread_id: str
     message_id: str
+
     # user_message_id: Optional[str] = None
     # assistant_message_id: Optional[str] = None
 
