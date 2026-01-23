@@ -18,7 +18,7 @@ def init_thread_pool(max_workers: int = 25, thread_name_prefix: str = "ai_educat
 
     Args:
         max_workers: 最大线程数，默认25
-        thread_name_prefix: 线程名前缀，默认"rag_worker_"
+        thread_name_prefix: 线程名前缀，默认"ai_education_"
     """
     global _executor
     if _executor is None:

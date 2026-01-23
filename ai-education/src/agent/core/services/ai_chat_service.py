@@ -16,7 +16,6 @@ class AIChatService:
     @staticmethod
     async def ai_chat(request: ChatRequest,agent: CompiledStateGraph,db: Session):
 
-
         # 1. 直接创建Repository实例
         thread_repo = ThreadRepository(db)
         msg_repo = MessageRepository(db)
@@ -49,7 +48,6 @@ class AIChatService:
         )
 
         # 4. 调用AI获取回复（你原有的逻辑）
-        # ... 你原有的AI调用代码
         # 准备图的状态和配置
         initial_state = {
             "messages": [HumanMessage(content=user_message.content)]

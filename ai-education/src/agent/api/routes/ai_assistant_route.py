@@ -38,7 +38,7 @@ async def upload_ppt(
         file: UploadFile = File(..., description="PPT 文件")
 ):
     """
-    上传 PPT 文件并添加到知识库
+    上传 PPT 文件并添加到知识库（使用批量插入）
     """
     # 参数验证
     if not subject.strip():
@@ -54,41 +54,79 @@ async def upload_ppt(
         # 处理 PPT 文件
         documents = FileUtil.process_single_ppt(contents, file.filename, subject)
 
-        # 获取集合（确保已初始化）
-        collection = ChromaUtil.get_collection()
+        if not documents:
+            return {
+                "success": True,
+                "message": "PPT 中未提取到有效内容",
+                "statistics": {
+                    "total_documents": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "filename": file.filename,
+                    "subject": subject
+                }
+            }
 
-        # 并发添加文档到数据库
-        tasks = []
-        for i, document in enumerate(documents):
-            task = submit_task(
-                RagUtil.add_document,
-                f"{subject}_{file.filename}_{i}",
-                document.page_content,
-                collection,
-                document.metadata
-            )
-            tasks.append(task)
+        # 准备批量数据
+        doc_ids = []
+        texts = []
+        metadatas = []
 
-        # 等待所有任务完成
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # 统计结果
-        success_count = 0
+        valid_count = 0
         errors = []
 
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                errors.append(f"文档 {i} 添加失败: {str(result)}")
-            else:
-                success_count += 1
+        for i, doc in enumerate(documents):
+            text = doc.page_content
+            if not isinstance(text, str) or not text.strip():
+                errors.append(f"文档 {i} 内容为空或非字符串，已跳过")
+                continue
+
+            doc_id = f"{subject}_{file.filename}_{valid_count}"  # 使用有效计数避免 ID 重复
+            doc_ids.append(doc_id)
+            texts.append(text)
+            metadatas.append(doc.metadata)
+            valid_count += 1
+
+        if not doc_ids:
+            return {
+                "success": True,
+                "message": "所有文档均无效，未插入任何内容",
+                "statistics": {
+                    "total_documents": len(documents),
+                    "successful": 0,
+                    "failed": len(documents),
+                    "filename": file.filename,
+                    "subject": subject
+                },
+                "errors": errors
+            }
+
+        # 获取集合
+        collection = ChromaUtil.get_collection()
+
+        # 批量插入（关键修改：不再使用 submit_task 和并发）
+        try:
+            RagUtil.add_documents(
+                doc_ids=doc_ids,
+                texts=texts,
+                collection=collection,
+                metadatas=metadatas
+            )
+            success_count = len(doc_ids)
+            failed_count = len(documents) - success_count
+        except Exception as e:
+            # 整个批次失败
+            success_count = 0
+            failed_count = len(documents)
+            errors.append(f"批量插入失败: {str(e)}")
 
         return {
             "success": True,
-            "message": f"PPT 处理完成",
+            "message": "PPT 处理完成",
             "statistics": {
                 "total_documents": len(documents),
                 "successful": success_count,
-                "failed": len(errors),
+                "failed": failed_count,
                 "filename": file.filename,
                 "subject": subject
             },
