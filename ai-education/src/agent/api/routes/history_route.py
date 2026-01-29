@@ -1,22 +1,20 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.utils.db_util import get_db
 
 router = APIRouter()
-
-# todo 请求的时候用对应的定义在schemas下的类替换，目前更直观显示参数
 
 @router.get("/threads")
 async def list_threads(
         user_id: str = Query(..., description="用户ID"),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
-        db: Session = Depends(get_db)
+        db: AsyncSession = Depends(get_db)
 ):
     """获取用户的对话列表"""
     thread_repo = ThreadRepository(db)
-    threads, total = thread_repo.list_by_user(
+    threads, total = await thread_repo.list_by_user(  # 添加await
         user_id=user_id,
         page=page,
         page_size=page_size
@@ -34,18 +32,16 @@ async def get_messages(
         thread_id: str = Query(..., description="对话线程ID"),
         limit: int = Query(50, ge=1, le=200),
         offset: int = Query(0, ge=0),
-        db: Session = Depends(get_db)
+        db: AsyncSession = Depends(get_db)
 ):
     """获取对话历史消息"""
     msg_repo = MessageRepository(db)
-    messages = msg_repo.get_messages_by_thread(
+    messages = await msg_repo.get_messages_by_thread(  # 添加await
         thread_id=thread_id,
         limit=limit,
         offset=offset,
-        order="asc"  # 时间正序，最早的在前
+        order="asc"
     )
-
-    # todo 用一个通用的响应类封装消息
 
     return {
         "thread_id": thread_id,

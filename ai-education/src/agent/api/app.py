@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 import dashscope
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
 from agent.api.routes.chat_route import router as chat_router
 from agent.api.routes.history_route import router as history_router
 from agent.api.routes.ai_assistant_route import router as ai_assistant_router
@@ -61,6 +63,15 @@ app = FastAPI(
     title="AI教育助手-北京科技大学",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# 配置 CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # 允许的前端地址
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有方法
+    allow_headers=["*"],  # 允许所有头
 )
 
 # 注册聊天路由

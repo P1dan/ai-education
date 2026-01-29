@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import APIRouter, Form, UploadFile, File, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from agent.configs.thread_pool_config import submit_task
@@ -25,7 +26,7 @@ async def get_rag_agent():
 router = APIRouter()
 
 @router.post("/chat")
-async def chat(request: ChatRequest,db: Session = Depends(get_db)):
+async def chat(request: ChatRequest,db: AsyncSession = Depends(get_db)):
     agent = await get_rag_agent()
     res = await AIChatService.ai_chat(request, agent, db)
     return res
