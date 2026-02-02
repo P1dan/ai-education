@@ -18,6 +18,9 @@ from agent.graphs.chat_graph import create_chat_graph
 from agent.utils.db_util import get_db
 from agent.utils.log_util import log
 
+# 基本聊天接口
+# todo 看一下能不能把db获取独立出来
+
 # 在模块级别创建全局智能体实例
 _chat_agent = None
 

@@ -33,11 +33,11 @@ class ThreadRepository(BaseRepository[ConversationThread]):
         )
         return result.scalar_one_or_none()
 
-    def create_thread(self,
-                      thread_id: Optional[str] = None,
-                      user_id: Optional[str] = None,
-                      title: Optional[str] = None,
-                      **kwargs) -> ConversationThread:
+    async def create_thread(self,
+                            thread_id: Optional[str] = None,
+                            user_id: Optional[str] = None,
+                            title: Optional[str] = None,
+                            **kwargs) -> ConversationThread:
         """创建新的对话线程"""
         if thread_id is None:
             thread_id = str(uuid.uuid4())
@@ -55,6 +55,7 @@ class ThreadRepository(BaseRepository[ConversationThread]):
             **kwargs
         )
         self.db.add(thread)
+        await self.db.flush([thread])  # 添加异步flush
         return thread
 
     async def update_title(self, thread_id: str, title: str) -> bool:

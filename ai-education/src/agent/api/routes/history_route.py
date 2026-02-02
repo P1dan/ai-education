@@ -1,7 +1,14 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from agent.core.repositories import ThreadRepository, MessageRepository
+
+from agent.core.schemas.history_schemas import EditThreadRequest, DeleteThreadRequest
+from agent.core.services.chat_thread_service import ChatThreadService
 from agent.utils.db_util import get_db
+
+# 对历史会话进行处理的路由，包括获取全部会话，获取会话消息记录，编辑/删除会话等等
+
 
 router = APIRouter()
 
@@ -13,12 +20,7 @@ async def list_threads(
         db: AsyncSession = Depends(get_db)
 ):
     """获取用户的对话列表"""
-    thread_repo = ThreadRepository(db)
-    threads, total = await thread_repo.list_by_user(  # 添加await
-        user_id=user_id,
-        page=page,
-        page_size=page_size
-    )
+    threads, total = await ChatThreadService.get_all_threads(user_id, db, page, page_size)
 
     return {
         "threads": [thread.to_dict() for thread in threads],
@@ -30,21 +32,49 @@ async def list_threads(
 @router.get("/messages")
 async def get_messages(
         thread_id: str = Query(..., description="对话线程ID"),
-        limit: int = Query(50, ge=1, le=200),
-        offset: int = Query(0, ge=0),
+        limit: int = Query(20, ge=1, le=100),
+        cursor_id: Optional[str] = Query(None, description="游标消息ID"),
+        direction: str = Query("before", description="方向：before=获取更早的消息，after=获取更新的消息"),
         db: AsyncSession = Depends(get_db)
 ):
-    """获取对话历史消息"""
-    msg_repo = MessageRepository(db)
-    messages = await msg_repo.get_messages_by_thread(  # 添加await
+    """
+    获取对话消息 - 推荐使用游标分页
+
+    示例：
+    1. 首次加载: GET /messages?thread_id=xxx&limit=20
+    2. 上滑加载: GET /messages?thread_id=xxx&limit=20&cursor_id=最后一条消息ID&direction=before
+    3. 下拉刷新: GET /messages?thread_id=xxx&limit=20&cursor_id=第一条消息ID&direction=after
+    """
+    result = await ChatThreadService.get_all_messages(
         thread_id=thread_id,
         limit=limit,
-        offset=offset,
-        order="asc"
+        cursor_id=cursor_id,
+        direction=direction,
+        db=db
     )
-
     return {
         "thread_id": thread_id,
-        "messages": [msg.to_dict() for msg in messages],
-        "total": len(messages)
+        "messages": [msg.to_dict() for msg in result["messages"]],
+        "pagination": result["pagination"]
     }
+
+
+# 重命名会话
+@router.post("/edit")
+async def edit_thread(
+        request:EditThreadRequest,
+        db: AsyncSession = Depends(get_db)
+):
+    success = await ChatThreadService.edit_thread(request,db)
+    return success
+
+
+# 删除某个会话
+@router.post("/delete")
+async def delete_thread(
+        request:DeleteThreadRequest,
+        db: AsyncSession = Depends(get_db)
+):
+    success = await ChatThreadService.delete_thread(request,db)
+    return success
+
