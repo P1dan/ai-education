@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agent.core.schemas.api_response import ApiResponse
 from agent.core.schemas.history_schemas import EditThreadRequest, DeleteThreadRequest
 from agent.core.services.chat_thread_service import ChatThreadService
 from agent.utils.db_util import get_db
@@ -39,11 +40,6 @@ async def get_messages(
 ):
     """
     获取对话消息 - 推荐使用游标分页
-
-    示例：
-    1. 首次加载: GET /messages?thread_id=xxx&limit=20
-    2. 上滑加载: GET /messages?thread_id=xxx&limit=20&cursor_id=最后一条消息ID&direction=before
-    3. 下拉刷新: GET /messages?thread_id=xxx&limit=20&cursor_id=第一条消息ID&direction=after
     """
     result = await ChatThreadService.get_all_messages(
         thread_id=thread_id,
@@ -52,11 +48,12 @@ async def get_messages(
         direction=direction,
         db=db
     )
-    return {
+    data = {
         "thread_id": thread_id,
         "messages": [msg.to_dict() for msg in result["messages"]],
         "pagination": result["pagination"]
     }
+    return ApiResponse.success(data=data)
 
 
 # 重命名会话
@@ -66,7 +63,7 @@ async def edit_thread(
         db: AsyncSession = Depends(get_db)
 ):
     success = await ChatThreadService.edit_thread(request,db)
-    return success
+    return ApiResponse.success(data = {"success":success})
 
 
 # 删除某个会话
@@ -76,5 +73,4 @@ async def delete_thread(
         db: AsyncSession = Depends(get_db)
 ):
     success = await ChatThreadService.delete_thread(request,db)
-    return success
-
+    return ApiResponse.success(data = {"success":success})

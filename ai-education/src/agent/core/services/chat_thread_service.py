@@ -73,7 +73,7 @@ class ChatThreadService:
                 cursor_id=None,
                 direction="before"
             )
-            # ✅ 关键：首次加载需要反转，让最旧的消息在前
+            # 首次加载需要反转，让最旧的消息在前
             messages = list(reversed(messages))
 
         else:
@@ -85,8 +85,6 @@ class ChatThreadService:
                 direction=direction
             )
 
-            # ✅ 如果是加载历史消息（before），已经是正序，不需要反转
-            # 如果是加载新消息（after），可能不需要反转，看你的get_messages_by_cursor实现
 
         # 计算是否有更多消息
         has_more = len(messages) == limit
