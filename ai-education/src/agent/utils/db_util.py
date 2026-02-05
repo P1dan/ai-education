@@ -17,6 +17,11 @@ def get_database_url() -> str:
     获取数据库连接URL
     优先级：环境变量 DATABASE_URL > 拼接的URL
     """
+
+    if pg_db_url := os.getenv("PG_DATABASE_URL"):
+        return pg_db_url
+
+
     if db_url := os.getenv("DATABASE_URL"):
         return db_url
 
@@ -34,13 +39,19 @@ def get_database_url() -> str:
 
 def get_async_database_url() -> str:
     """
-    获取异步数据库连接URL（将同步URL转换为异步）
+    将同步数据库URL转换为异步版本
+    支持 MySQL 和 PostgreSQL
     """
     sync_url = get_database_url()
-    # 将mysql+pymysql改为mysql+aiomysql
+
     if sync_url.startswith("mysql+pymysql://"):
         return sync_url.replace("mysql+pymysql://", "mysql+aiomysql://")
-    return sync_url
+    elif sync_url.startswith("postgresql+psycopg2://"):
+        return sync_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+    elif sync_url.startswith("postgresql://"):  # 默认视为 psycopg2
+        return sync_url.replace("postgresql://", "postgresql+asyncpg://")
+    else:
+        raise ValueError(f"不支持的数据库URL格式，请使用 MySQL 或 PostgreSQL: {sync_url}")
 
 
 # 获取数据库URL

@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, Enum, JSON, ForeignKey, Index, BigInteger
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 import enum
@@ -26,8 +27,9 @@ class ConversationThread(Base):
     message_count = Column(Integer, default=0)
 
     # 时间戳 用的标准utc的时间，所以会比北京时间差大概八个小时
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(TIMESTAMP(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 
     # 状态标记
@@ -84,7 +86,7 @@ class Message(Base):
     model = Column(String(50), nullable=True)
 
     # 时间戳
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # 扩展字段 - 注意：这里改为了 extra_data
     extra_data = Column(JSON, default=dict)
