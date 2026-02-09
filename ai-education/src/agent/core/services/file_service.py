@@ -1,10 +1,13 @@
 # services/file_service.py
 
 from fastapi import UploadFile
-from agent.utils.chroma_util import ChromaUtil
-from agent.utils.file_util import FileUtil
-from agent.utils.rag_util import RagUtil
+from sqlalchemy.testing.suite.test_reflection import metadata
 
+from agent.utils.file_util import FileUtil
+from agent.utils.vectorDB_util import VectorDBUtil
+
+
+# 文件服务，处理各种文件
 
 class FileService:
 
@@ -59,13 +62,13 @@ class FileService:
             raise ValueError("所有文档均无效，未插入任何内容。原因: " + "; ".join(errors))
 
         try:
-            collection = ChromaUtil.get_collection()
-            RagUtil.add_documents(
+            VectorDBUtil.add_documents(
                 doc_ids=doc_ids,
                 texts=texts,
-                collection=collection,
                 metadatas=metadatas
             )
+
+
         except Exception as e:
             # 包装为通用运行时错误（仍使用内置异常）
             raise RuntimeError(f"向量库批量插入失败: {str(e)}") from e

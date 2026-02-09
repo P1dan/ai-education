@@ -9,10 +9,11 @@ from agent.api.routes.chat_route import router as chat_router
 from agent.api.routes.history_route import router as history_router
 from agent.api.routes.ai_assistant_route import router as ai_assistant_router
 from agent.configs.thread_pool_config import init_thread_pool
-from agent.utils.chroma_util import ChromaUtil
 import os
 
 from agent.utils.log_util import log
+from agent.utils.rationalDB_util import RelationalDBUtil
+from agent.utils.vectorDB_util import VectorDBUtil
 
 load_dotenv()
 # 初始化配置
@@ -31,13 +32,14 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     print("🚀 应用启动中...")
 
+    await RelationalDBUtil.init_database_async()
+
 
     # 初始化 Chroma
-    ChromaUtil.init_chroma(
-        chroma_db_path = os.getenv("CHROMA_DB_PATH"),
-        collection_name = os.getenv("CHROMA_COLLECTION_NAME")
+    VectorDBUtil.init_db(
+        collection_name=os.getenv("POSTGRES_COLLECTION_NAME"),
+        embedding_dim=1536
     )
-    log.info(f"向量数据库chroma初始化成功，客户端实例：{ChromaUtil.get_client()}，集合：{ChromaUtil.get_collection()}")
 
     # 初始化线程池，初始化函数会log
     init_thread_pool()
@@ -54,7 +56,7 @@ async def lifespan(app: FastAPI):
     print("🛑 应用关闭中...")
 
     # 清理资源
-    ChromaUtil.shutdown()
+    VectorDBUtil.shutdown()
 
     print("✅ 应用已关闭")
 

@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.core.schemas.chat_schemas import ChatRequest
-from agent.utils.db_util import get_db
 from agent.utils.log_util import log
 
 
@@ -27,21 +26,21 @@ class AIChatService:
             thread = await thread_repo.get_by_thread_id(request.thread_id)
             if not thread:
                 # 线程不存在，可以创建新线程或返回错误
-                thread = thread_repo.create_thread(
+                thread =await thread_repo.create_thread(
                     thread_id=request.thread_id,
                     user_id=request.user_id
                 )
         else:
             # 创建新线程
             thread_id = str(uuid.uuid4())
-            thread = thread_repo.create_thread(
+            thread =await thread_repo.create_thread(
                 thread_id=thread_id,
                 user_id=request.user_id,
                 title=request.message[:30] + "..."
             )
 
         # 3. 保存用户消息
-        user_message = msg_repo.add_message(
+        user_message =await msg_repo.add_message(
             thread_id=thread.thread_id,
             content=request.message,
             role="user",
@@ -58,7 +57,7 @@ class AIChatService:
         ai_response = result["messages"][-1].content
 
         # 5. 保存AI回复
-        ai_message = msg_repo.add_message(
+        ai_message =await msg_repo.add_message(
             thread_id=thread.thread_id,
             content=ai_response,
             role="assistant",

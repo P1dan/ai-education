@@ -1,8 +1,9 @@
+import os
+
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from agent.utils.chroma_util import ChromaUtil
-from agent.utils.rag_util import RagUtil
+from agent.utils.vectorDB_util import VectorDBUtil
 
 
 class PPTRagInput(BaseModel):
@@ -21,11 +22,12 @@ class PPTRagTool(BaseTool):
     def _run(self, query: str) -> str:
         print(f"用户想知道：{query}")
 
-        collection = ChromaUtil.get_collection()
-
-        print(f"当前数据库是：{collection}")
-
-        result = RagUtil.query_vector_db(query, collection, 2)
+        query_vector = VectorDBUtil.get_embedding(query)
+        result = VectorDBUtil.similarity_search(
+            query_embedding=query_vector,
+            k=3,
+            score_threshold=0.5 # 相似度阈值
+        )
         print(result)
         return format_rag_result_conversational(result)
 
@@ -33,37 +35,56 @@ class PPTRagTool(BaseTool):
 
 def format_rag_result_conversational(result):
     """转换为对话友好的自然语言格式"""
-    docs_info = []
 
-    for doc_id, document, metadata, distance in zip(
-            result['ids'][0],
-            result['documents'][0],
-            result['metadatas'][0],
-            result['distances'][0]
-    ):
-        # 计算相关性
-        relevance = "高" if distance < 0.4 else "中" if distance < 0.6 else "低"
+    # 统一处理：将两种格式都转换为标准格式
+    if isinstance(result, list):
+        # 新格式：列表 of 字典
+        docs = result
+    elif isinstance(result, dict):
+        # 旧格式：字典 of 列表
+        docs = []
+        ids = result.get('ids', [[]])
+        documents = result.get('documents', [[]])
+        metadatas = result.get('metadatas', [[]])
+        similarities = result.get('similarity', [[]])
 
-        info = {
-            "文档": document,
-            "来源信息": {
-                "科目": metadata.get('subject', '未知'),
-                "文件": metadata.get('filename', '未知'),
-                "页码": metadata.get('page', '未知'),
-                "相关性": relevance,
-                "置信度": f"{round((1-distance)*100, 1)}%"
+        # 转换旧格式为新格式
+        for i in range(len(ids[0])):
+            doc = {
+                'id': ids[0][i] if i < len(ids[0]) else f"doc_{i}",
+                'content': documents[0][i] if i < len(documents[0]) else "",
+                'metadata': metadatas[0][i] if i < len(metadatas[0]) else {},
+                'similarity': similarities[0][i] if i < len(similarities[0]) else 0.0
             }
-        }
-        docs_info.append(info)
+            docs.append(doc)
+    else:
+        return "无法处理检索结果格式。"
 
-    # 构建自然语言描述
-    summary = f"我为你找到了 {len(docs_info)} 条相关信息：\n\n"
+    # 统一处理 docs 列表
+    if not docs:
+        return "未在知识库中找到相关信息。"
 
-    for i, info in enumerate(docs_info, 1):
-        meta = info["来源信息"]
-        summary += f"{i}. 【{meta['相关性']}相关，置信度{meta['置信度']}】"
-        summary += f"来自《{meta['文件']}》的{meta['科目']}科目第{meta['页码']}页：\n"
-        summary += f"   {info['文档']}\n\n"
+    docs_info = []
+    for doc in docs[:3]:  # 只显示前3个结果
+        content = doc.get('content', '')
+        metadata = doc.get('metadata', {})
+        similarity = doc.get('similarity', 0.0)
 
-    return summary.strip()
+        # 提取来源信息
+        if isinstance(metadata, dict):
+            source = metadata.get('source', metadata.get('filename', metadata.get('title', '未知来源')))
+        else:
+            source = str(metadata)
+
+        # 截断过长的内容
+        if len(content) > 200:
+            content = content[:200] + "..."
+
+        docs_info.append(f"【{source}】（相关度：{similarity:.1%}）\n{content}")
+
+    response = f"根据知识库检索到以下信息：\n\n"
+    response += "\n\n".join(docs_info)
+    response += "\n\n（以上信息仅供参考，请结合具体情况判断。）"
+
+    return response
 
