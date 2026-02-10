@@ -6,7 +6,6 @@
 import os
 from typing import List, Optional, Dict, Any
 
-import dashscope
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from psycopg2.extras import Json
@@ -96,12 +95,12 @@ class VectorDBUtil:
             """))
 
             # 创建向量索引
-            # conn.execute(text(f"""
-            #     CREATE INDEX IF NOT EXISTS idx_{cls._collection_name}_embedding
-            #     ON {cls._collection_name}
-            #     USING ivfflat (embedding vector_cosine_ops)
-            #     WITH (lists = 100)
-            # """))
+            conn.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS idx_{cls._collection_name}_embedding 
+                ON {cls._collection_name} 
+                USING hnsw (embedding vector_cosine_ops)
+                WITH (m = 16, ef_construction = 64) -- 这里的参数可以调整，m控制连接数，ef_construction控制构建质量
+            """))
             conn.commit()
 
     # ==================== 核心数据库操作 ====================

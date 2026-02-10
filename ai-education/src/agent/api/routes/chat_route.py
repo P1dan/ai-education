@@ -14,23 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.core.schemas.chat_schemas import ChatRequest
 from agent.core.services.ai_chat_service import AIChatService
-from agent.graphs.chat_graph import create_chat_graph
+
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
 
 # 基本聊天接口
 # todo 看一下能不能把db获取独立出来
 
-# 在模块级别创建全局智能体实例
-_chat_agent = None
 
-async def get_chat_agent():
-    """获取或创建聊天智能体（单例）"""
-    global _chat_agent
-
-    if _chat_agent is None:
-        _chat_agent = await create_chat_graph()
-    return _chat_agent
 
 
 router = APIRouter()
@@ -38,7 +29,8 @@ router = APIRouter()
 @router.post("/chat")
 async def chat(chat_request: ChatRequest, db: AsyncSession = Depends(RelationalDBUtil.get_db())):
     """普通聊天接口（非流式）"""
-    agent = await get_chat_agent()
+    from agent.api.app import agents  # ← 延迟导入
+    agent = agents['rag_agent']
     res = await AIChatService.ai_chat(chat_request, agent, db)
     return res
 
@@ -53,7 +45,8 @@ async def chat_stream(
     """
     流式聊天接口（SSE）
     """
-    agent = await get_chat_agent()
+    from agent.api.app import agents  # ← 延迟导入
+    agent = agents['rag_agent']
     stream_request = ChatRequest(user_id=user_id, message=message, thread_id=thread_id)
 
     async def generate():

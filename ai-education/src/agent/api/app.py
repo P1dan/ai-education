@@ -11,6 +11,7 @@ from agent.api.routes.ai_assistant_route import router as ai_assistant_router
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
+from agent.graphs.ai_assistant_graph import create_rag_agent
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
 from agent.utils.vectorDB_util import VectorDBUtil
@@ -22,43 +23,46 @@ load_dotenv()
 
 # 设置 Dashscope API Key
 dashscope.api_key = os.getenv("ALIYUN_API_KEY")
+agents = {} # 构建全局agents字典，应用启动时统一加载所有agent避免并发问题
+
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app : FastAPI):
     """
     应用生命周期管理
     启动时初始化，关闭时清理
     """
     # 启动时执行
-    print("🚀 应用启动中...")
+    log.info("🚀 应用启动中...")
 
+    # 初始化关系型数据库连接
     await RelationalDBUtil.init_database_async()
-
-
-    # 初始化 Chroma
+    # 初始化向量数据库
     VectorDBUtil.init_db(
         collection_name=os.getenv("POSTGRES_COLLECTION_NAME"),
         embedding_dim=1536
     )
 
-    # 初始化线程池，初始化函数会log
+    # 初始化agents
+    agents['rag_agent'] = await create_rag_agent()
+    log.success("agents初始化成功")
+    # 初始化线程池
     init_thread_pool()
 
     # todo 这里可以添加其他初始化逻辑
-    # 例如：加载模型、连接其他数据库等
 
-    print("✅ 应用启动完成")
+    log.success("✅ 应用启动完成")
 
     # 应用运行期间
     yield
 
     # 关闭时执行
-    print("🛑 应用关闭中...")
+    log.info("🛑 应用关闭中...")
 
     # 清理资源
-    VectorDBUtil.shutdown()
+    VectorDBUtil.shutdown() # 清理数据库连接
 
-    print("✅ 应用已关闭")
+    log.success("✅ 应用已关闭")
 
 # 创建 FastAPI 应用
 app = FastAPI(

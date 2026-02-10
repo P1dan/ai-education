@@ -1,4 +1,3 @@
-# src/utils/rationalDB_util.py
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from contextlib import asynccontextmanager
@@ -6,6 +5,7 @@ from typing import AsyncGenerator, Callable
 import os
 from dotenv import load_dotenv
 
+from agent.utils.log_util import log
 
 # 加载 .env 文件
 load_dotenv()
@@ -74,7 +74,6 @@ class RelationalDBUtil:
                     raise e
                 finally:
                     await session.close()
-
         return _get_db
 
     @classmethod
@@ -100,12 +99,12 @@ class RelationalDBUtil:
         cls.initialize()
         try:
             from agent.core.entities.chat_models import Base
-            print("开始异步创建数据库表...")
+            log.info("开始异步创建数据库表...")
             async with cls.async_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-            print("数据库表创建完成！")
+            log.success("数据库表创建完成！")
         except Exception as e:
-            print(f"异步创建数据库表失败: {e}")
+            log.error(f"异步创建数据库表失败: {e}")
             raise
 
     @classmethod
@@ -119,7 +118,7 @@ class RelationalDBUtil:
                 result = await conn.execute(text("SELECT 1"))
                 return result.scalar() == 1
         except Exception as e:
-            print(f"数据库连接失败: {e}")
+            log.error(f"数据库连接失败: {e}")
             return False
 
     @classmethod
@@ -129,10 +128,10 @@ class RelationalDBUtil:
         """
         cls.initialize()
         from agent.core.entities.chat_models import Base
-        print("警告：正在异步删除所有数据库表...")
+        log.error("警告：正在异步删除所有数据库表...")
         async with cls.async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
-        print("所有表已删除！")
+        log.success("所有表已删除！")
 
 
 
