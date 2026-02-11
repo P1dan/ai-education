@@ -3,36 +3,75 @@ from typing import List
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from pptx import Presentation
 
-# 用于处理各种文件的工具类，与文件进行交互
+try:
+    from pptx import Presentation
+except ImportError:
+    Presentation = None
 
-## rag相关，将PPT内容处理适合嵌入到RAG向量数据库的格式
+
+try:
+    from docx import Document as DocxDocument
+except ImportError:
+    DocxDocument = None
 
 
+# 将文件内容转化为可以嵌入到向量数据库的documents
 
 class FileUtil:
 
     @staticmethod
-    def process_single_ppt(ppt_bytes: bytes, filename: str, subject: str) -> List[Document]:
+    def process_file(file_bytes: bytes, filename: str, subject: str) -> List[Document]:
         """
-        从内存中的 PPT 字节流提取内容，分块，返回 LangChain Document 列表。
+        统一入口：根据文件后缀自动选择解析器，返回标准化的 Document 列表。
+
+        支持格式：
+          - PowerPoint: .pptx（.ppt 不支持，因 python-pptx 仅支持 .pptx）
+          - Word:       .docx（.doc 不支持）
+          - 纯文本：     可后续扩展 .txt
 
         参数:
-            ppt_bytes (bytes): 用户上传的 PPT 文件二进制内容
-            filename (str): 原始文件名（如 "介绍.pptx"）
-            subject(str): 学科，可以根据不同学科区分不同的RAG数据
+            file_bytes (bytes): 文件二进制内容
+            filename (str): 原始文件名（用于判断类型和记录 metadata）
+            subject (str): 学科标签
 
         返回:
-            List[Document]: 分割后的文档片段，每个包含 page_content 和 metadata
+            List[Document]: 分块后的文档列表，metadata 结构统一
         """
-        # 1. 用 BytesIO 包装字节流，供 python-pptx 读取
+        lower_name = filename.lower()
+
+        if lower_name.endswith('.pptx'):
+            if Presentation is None:
+                raise RuntimeError("缺少依赖库：请安装 python-pptx")
+            return FileUtil._parse_pptx(file_bytes, filename, subject)
+
+
+        elif lower_name.endswith('.docx'):
+            if DocxDocument is None:
+                raise RuntimeError("缺少依赖库：请安装 python-docx")
+            return FileUtil._parse_docx(file_bytes, filename, subject)
+
+        else:
+            supported = ['.pptx', '.docx']
+            raise ValueError(f"不支持的文件格式：{filename}。目前支持：{supported}")
+
+    @staticmethod
+    def _get_text_splitter():
+        """复用同一个分块器配置，便于统一调整"""
+        return RecursiveCharacterTextSplitter(
+            chunk_size=300,
+            chunk_overlap=50,
+            separators=["\n\n", "\n", "。", "，", " ", ""]
+        )
+
+    @staticmethod
+    def _parse_pptx(ppt_bytes: bytes, filename: str, subject: str) -> List[Document]:
+        """解析 .pptx 文件（复用你原有的逻辑）"""
         try:
             prs = Presentation(BytesIO(ppt_bytes))
         except Exception as e:
-            raise ValueError(f"无法解析 PPT 文件 '{filename}'，可能不是有效的 .pptx 文件")
+            raise ValueError(f"无法解析 PPT 文件 '{filename}'，可能不是有效的 .pptx 文件") from e
 
-        # 2. 提取每页非空文本
         slides_content = []
         for slide_num, slide in enumerate(prs.slides, start=1):
             texts = []
@@ -41,37 +80,68 @@ class FileUtil:
                     texts.append(shape.text.strip())
             if texts:
                 slides_content.append({
-                    "slide_number": slide_num,
+                    "page": slide_num,
                     "content": " ".join(texts)
                 })
 
         if not slides_content:
             raise ValueError(f"PPT 文件 '{filename}' 中未提取到任何文本内容")
 
-        # 3. 文本分块
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=300, # 可以根据文件实际的内容调整大小
-            chunk_overlap=50,
-            separators=["\n\n", "\n", "。", "，", " ", ""]
-        )
+        return FileUtil._split_and_build_docs(slides_content, filename, subject)
 
-        # 4. 构造 Document 列表
+
+    @staticmethod
+    def _parse_docx(docx_bytes: bytes, filename: str, subject: str) -> List[Document]:
+        """解析 .docx 文件，按段落合并后分页（模拟“页”概念）"""
+        try:
+            doc = DocxDocument(BytesIO(docx_bytes))
+        except Exception as e:
+            raise ValueError(f"无法解析 DOCX 文件 '{filename}'，可能不是有效的 .docx 文件") from e
+
+        # 提取所有非空段落
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        if not paragraphs:
+            raise ValueError(f"DOCX 文件 '{filename}' 中未提取到任何文本内容")
+
+        # 简单策略：将整个文档视为“第1页”
+        # 若需更精细分页（如按分页符），可后续增强
+        doc_content = {
+            "page": 1,
+            "content": "\n".join(paragraphs)
+        }
+
+        return FileUtil._split_and_build_docs([doc_content], filename, subject)
+
+    @staticmethod
+    def _split_and_build_docs(
+            content_list: List[dict],
+            filename: str,
+            subject: str
+    ) -> List[Document]:
+        """
+        通用分块与 Document 构造逻辑。
+
+        content_list: 每项为 {"page": int, "content": str}
+        """
+        splitter = FileUtil._get_text_splitter()
         documents = []
-        for slide in slides_content:
-            chunks = text_splitter.split_text(slide["content"])
+
+        for item in content_list:
+            page_num = item["page"]
+            text = item["content"]
+            chunks = splitter.split_text(text)
+
             for i, chunk in enumerate(chunks):
-                # 跳过空 chunk（虽然 split_text 一般不会产生，但保险起见）
                 if not chunk.strip():
                     continue
                 doc = Document(
                     page_content=chunk,
                     metadata={
-                        "filename": filename,           # 原始文件名
-                        "subject": subject,             # 所属的学科，用于区分不同的学科知识
-                        "page": slide["slide_number"],  # 第几页
-                        "chunk_index": i + 1,           # 当前 chunk 编号
-                        "total_chunks": len(chunks),    # 该页总 chunk 数
-                        # 后续可加 user_id, upload_time 等
+                        "filename": filename,
+                        "subject": subject,
+                        "page": page_num,
+                        "chunk_index": i + 1,
+                        "total_chunks": len(chunks),
                     }
                 )
                 documents.append(doc)

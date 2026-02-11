@@ -5,7 +5,7 @@ from psycopg import AsyncConnection
 
 from agent.configs.llm_configs import deepseek
 from agent.tools.basic_tool_node import BasicToolNode
-from agent.tools.rag_tool import PPTRagTool
+from agent.tools.rag_tool import RagTool
 
 
 class State(MessagesState):
@@ -20,7 +20,7 @@ async def create_rag_agent():
     builder = StateGraph(State)
 
     # 拿到工具
-    tool = PPTRagTool()
+    tool = RagTool()
     tools = [tool]
     llm_with_rag = deepseek.bind_tools(tools) # 让llm知道它有哪些工具，但它没法执行，需要定义工具节点
 

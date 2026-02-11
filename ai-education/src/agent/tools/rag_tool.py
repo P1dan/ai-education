@@ -6,13 +6,13 @@ from pydantic import BaseModel, Field
 from agent.utils.vectorDB_util import VectorDBUtil
 
 
-class PPTRagInput(BaseModel):
+class RagInput(BaseModel):
     query: str = Field(..., description="要从Rag知识库中查询的问题，是一个字符串")
 
-class PPTRagTool(BaseTool):
+class RagTool(BaseTool):
     name: str = "rag_tool"
     description: str = "用于从RAG向量数据库中获取相关知识的工具"
-    args_schema: type[BaseModel] = PPTRagInput # 命名为类本身
+    args_schema: type[BaseModel] = RagInput # 命名为类本身
 
 
     def __init__(self, **kwargs):

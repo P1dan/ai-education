@@ -20,14 +20,14 @@ class FileService:
         if not subject or not subject.strip():
             raise ValueError("学科名称不能为空")
 
-        if not file.filename.endswith(('.ppt', '.pptx')):
-            raise ValueError("只支持 .ppt 或 .pptx 文件")
+        # if not file.filename.endswith(('.ppt', '.pptx')):
+        #     raise ValueError("只支持 .ppt 或 .pptx 文件")
 
         contents = await file.read()
         if not contents:
             raise ValueError("上传的文件为空")
 
-        documents = FileUtil.process_single_ppt(contents, file.filename, subject)
+        documents = FileUtil.process_file(contents, file.filename, subject)
 
         if not documents:
             return {
@@ -67,8 +67,6 @@ class FileService:
                 texts=texts,
                 metadatas=metadatas
             )
-
-
         except Exception as e:
             # 包装为通用运行时错误（仍使用内置异常）
             raise RuntimeError(f"向量库批量插入失败: {str(e)}") from e
