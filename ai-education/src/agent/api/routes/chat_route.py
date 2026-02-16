@@ -10,6 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from fastapi import APIRouter, Depends
 from requests import request
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.core.schemas.chat_schemas import ChatRequest
@@ -40,13 +41,23 @@ async def chat_stream(
         user_id: str = Query(..., min_length=1),
         message: str = Query(..., min_length=1),
         thread_id: Optional[str] = None,
+        agent_name: Optional[str] = 'rag_agent',
         db: AsyncSession = Depends(RelationalDBUtil.get_db())  # 使用依赖注入
 ):
     """
     流式聊天接口（SSE）
     """
     from agent.api.app import agents  # ← 延迟导入
-    agent = agents['rag_agent']
+    if agent_name in agents:
+        agent = agents[agent_name]
+    else:
+        # 处理不存在的情况，比如设默认值或报错
+        log.error('找不到相应的智能体')
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent '{agent_name}' not found"
+        )
+
     stream_request = ChatRequest(user_id=user_id, message=message, thread_id=thread_id)
 
     async def generate():

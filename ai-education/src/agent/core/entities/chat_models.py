@@ -1,4 +1,3 @@
-# src/core/models/chat_models.py
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, Enum, JSON, ForeignKey, Index, BigInteger
@@ -21,12 +20,11 @@ class ConversationThread(Base):
     __tablename__ = "conversation_threads"
 
     # 主键和基础字段
-    thread_id = Column(String(36), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    thread_id = Column(String(36), unique=True, nullable=False)
     user_id = Column(String(255), nullable=True, index=True)
     title = Column(String(500), nullable=True)
     message_count = Column(Integer, default=0)
-
-    # 时间戳 用的标准utc的时间，所以会比北京时间差大概八个小时
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(TIMESTAMP(timezone=True),
                         default=lambda: datetime.now(timezone.utc),
