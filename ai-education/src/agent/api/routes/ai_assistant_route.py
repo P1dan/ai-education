@@ -7,7 +7,7 @@ from agent.core.services.ai_chat_service import AIChatService
 from agent.core.services.file_service import FileService
 from agent.graphs.ai_assistant_graph import create_rag_agent
 from agent.utils.log_util import log
-from agent.utils.rationalDB_util import RelationalDBUtil
+from agent.utils.rationalDB_util import RelationalDBUtil, get_db
 
 _rag_agent = None
 async def get_rag_agent():
@@ -23,7 +23,7 @@ async def get_rag_agent():
 router = APIRouter()
 
 @router.post("/chat")
-async def chat(request: ChatRequest,db: AsyncSession = Depends(RelationalDBUtil.get_db())):
+async def chat(request: ChatRequest,db: AsyncSession = Depends(get_db)):
     agent = await get_rag_agent()
     res = await AIChatService.ai_chat(request, agent, db)
     return res

@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 import enum
 
-Base = declarative_base()
+from agent.core.entities.base import Base
 
 
 class MessageRole(str, enum.Enum):
@@ -41,9 +41,9 @@ class ConversationThread(Base):
 
     # 添加索引
     __table_args__ = (
-        Index('idx_user_created', 'user_id', 'created_at'),
-        Index('idx_updated_at', 'updated_at'),
-        Index('idx_active_updated', 'is_active', 'updated_at'),
+        Index('thread_idx_user_created', 'user_id', 'created_at'),
+        Index('thread_idx_updated_at', 'updated_at'),
+        Index('thread_idx_active_updated', 'is_active', 'updated_at'),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -91,9 +91,9 @@ class Message(Base):
 
     # 索引
     __table_args__ = (
-        Index('idx_thread_created', 'thread_id', 'created_at'),
-        Index('idx_created_at', 'created_at'),
-        Index('idx_thread_role', 'thread_id', 'role'),
+        Index('message_idx_thread_created', 'thread_id', 'created_at'),
+        Index('message_idx_created_at', 'created_at'),
+        Index('message_idx_thread_role', 'thread_id', 'role'),
     )
 
     def to_dict(self) -> Dict[str, Any]:

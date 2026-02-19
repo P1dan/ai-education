@@ -8,6 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from agent.api.routes.chat_route import router as chat_router
 from agent.api.routes.history_route import router as history_router
 from agent.api.routes.ai_assistant_route import router as ai_assistant_router
+from agent.api.routes.auth_route import router as auth_router
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
@@ -84,6 +85,7 @@ app.add_middleware(
 app.include_router(chat_router, prefix="/api/chat_conversation", tags=["聊天会话"])
 app.include_router(history_router, prefix="/api/history_conversation", tags=["历史记录"])
 app.include_router(ai_assistant_router, prefix="/api/ai_assistant", tags=["AI助教"])
+app.include_router(auth_router, prefix="/api/auth", tags=["注册登录"])
 
 @app.get("/")
 async def root():

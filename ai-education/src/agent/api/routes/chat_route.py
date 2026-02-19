@@ -17,7 +17,7 @@ from agent.core.schemas.chat_schemas import ChatRequest
 from agent.core.services.ai_chat_service import AIChatService
 
 from agent.utils.log_util import log
-from agent.utils.rationalDB_util import RelationalDBUtil
+from agent.utils.rationalDB_util import RelationalDBUtil, get_db
 
 # 基本聊天接口
 # todo 看一下能不能把db获取独立出来
@@ -28,7 +28,7 @@ from agent.utils.rationalDB_util import RelationalDBUtil
 router = APIRouter()
 
 @router.post("/chat")
-async def chat(chat_request: ChatRequest, db: AsyncSession = Depends(RelationalDBUtil.get_db())):
+async def chat(chat_request: ChatRequest, db: AsyncSession = Depends(get_db)):
     """普通聊天接口（非流式）"""
     from agent.api.app import agents  # ← 延迟导入
     agent = agents['rag_agent']
@@ -42,7 +42,7 @@ async def chat_stream(
         message: str = Query(..., min_length=1),
         thread_id: Optional[str] = None,
         agent_name: Optional[str] = 'rag_agent',
-        db: AsyncSession = Depends(RelationalDBUtil.get_db())  # 使用依赖注入
+        db: AsyncSession = Depends(get_db)  # 使用依赖注入
 ):
     """
     流式聊天接口（SSE）

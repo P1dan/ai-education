@@ -1,9 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Enum, DateTime, Index, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from agent.core.entities.base import Base
 
 
 class UserRole(str, enum.Enum):
@@ -48,16 +46,16 @@ class User(Base):
     # 表索引配置
     __table_args__ = (
         # 复合索引：按角色和创建时间查询
-        Index('idx_role_created', 'role', 'created_at'),
+        Index('user_idx_role_created', 'role', 'created_at'),
 
         # 单独索引
-        Index('idx_created_at', 'created_at'),
-        Index('idx_updated_at', 'updated_at'),
-        Index('idx_phone', 'phone'),  # phone已有unique，但显式声明索引
-        Index('idx_active', 'is_active'),
+        Index('user_idx_created_at', 'created_at'),
+        Index('user_idx_updated_at', 'updated_at'),
+        Index('user_idx_phone', 'phone'),  # phone已有unique，但显式声明索引
+        Index('user_idx_active', 'is_active'),
 
         # 如果需要按创建时间倒序查询频繁，可以加desc索引
-        Index('idx_created_desc', 'created_at.desc'),
+        # Index('idx_created_desc', 'created_at.desc'),
     )
 
     def to_dict(self, exclude_fields=None):

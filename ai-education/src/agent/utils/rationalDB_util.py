@@ -4,12 +4,23 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Callable
 import os
 from dotenv import load_dotenv
-
 from agent.utils.log_util import log
 
 # 加载 .env 文件
 load_dotenv()
 
+# 直接定义一个全局的、固定依赖函数
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    RelationalDBUtil.initialize()
+    async with RelationalDBUtil.AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 class RelationalDBUtil:
     """关系型数据库工具类"""
@@ -57,24 +68,6 @@ class RelationalDBUtil:
                 class_=AsyncSession,
             )
 
-    @staticmethod
-    def get_db() -> Callable[..., AsyncGenerator[AsyncSession, None]]:
-        """
-        返回数据库依赖函数（用于FastAPI Depends）
-        """
-        async def _get_db() -> AsyncGenerator[AsyncSession, None]:
-            """实际的依赖函数"""
-            RelationalDBUtil.initialize()
-            async with RelationalDBUtil.AsyncSessionLocal() as session:
-                try:
-                    yield session
-                    await session.commit()
-                except Exception as e:
-                    await session.rollback()
-                    raise e
-                finally:
-                    await session.close()
-        return _get_db
 
     @classmethod
     @asynccontextmanager
@@ -98,7 +91,9 @@ class RelationalDBUtil:
         """
         cls.initialize()
         try:
-            from agent.core.entities.chat_models import Base
+            from agent.core.entities.base import Base
+            from agent.core.entities.user_models import User # 显示导入一下
+            from agent.core.entities.chat_models import ConversationThread,Message
             log.info("开始异步创建数据库表...")
             async with cls.async_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
