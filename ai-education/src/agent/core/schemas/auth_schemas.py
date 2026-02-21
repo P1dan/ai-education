@@ -10,7 +10,7 @@ class LoginRequest(BaseModel):
     """
     phone: str
     password: Optional[str] = None
-    verify_code: Optional[int] = None  # 验证码登录时的验证码
+    verify_code: Optional[str] = None  # 验证码登录时的验证码
 
 
 class RegisterRequest(BaseModel):

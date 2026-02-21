@@ -56,26 +56,3 @@ class JWTUtil:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    @staticmethod
-    def get_user_id_from_token(token: str) -> Optional[int]:
-        """
-        从token中获取用户ID
-        :param token: token字符串
-        :return: 用户ID
-        """
-        payload = JWTUtil.verify_token(token)
-        return payload.get("user_id")  # 假设存储时用的是user_id字段
-
-# 使用示例
-if __name__ == "__main__":
-    # 生成token
-    user_data = {"user_id": 123, "username": "test_user"}
-    token = JWTUtil.generate_token(user_data)
-    print(f"生成的token: {token}")
-
-    # 验证token
-    try:
-        payload = JWTUtil.verify_token(token)
-        print(f"解析结果: {payload}")
-    except HTTPException as e:
-        print(f"验证失败: {e.detail}")

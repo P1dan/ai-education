@@ -2,6 +2,8 @@ import json
 import time
 from typing import Optional
 
+from agent.configs.security_config import get_current_user_from_token
+from agent.core.entities.user_models import User
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -38,10 +40,10 @@ async def chat(chat_request: ChatRequest, db: AsyncSession = Depends(get_db)):
 # 流式好像只能用get接口，参数只能这样写
 @router.get("/stream")
 async def chat_stream(
-        user_id: str = Query(..., min_length=1),
         message: str = Query(..., min_length=1),
         thread_id: Optional[str] = None,
         agent_name: Optional[str] = 'rag_agent',
+        current_user: User = Depends(get_current_user_from_token),
         db: AsyncSession = Depends(get_db)  # 使用依赖注入
 ):
     """
@@ -58,7 +60,7 @@ async def chat_stream(
             detail=f"Agent '{agent_name}' not found"
         )
 
-    stream_request = ChatRequest(user_id=user_id, message=message, thread_id=thread_id)
+    stream_request = ChatRequest(user_id=current_user.user_id, message=message, thread_id=thread_id)
 
     async def generate():
         try:

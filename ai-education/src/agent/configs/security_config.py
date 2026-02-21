@@ -31,7 +31,7 @@ async def get_current_user_from_token(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效或过期的 Token",
+            detail=f"无效或过期的 Token，{str(e)}",
         )
 
     user_id = payload.get("user_id")

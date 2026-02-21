@@ -1,5 +1,7 @@
 from typing import Optional
 
+from agent.configs.security_config import get_current_user_from_token
+from agent.core.entities.user_models import User
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,13 +17,13 @@ router = APIRouter()
 
 @router.get("/threads")
 async def list_threads(
-        user_id: str = Query(..., description="用户ID"),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
+        current_user: User = Depends(get_current_user_from_token),
         db: AsyncSession = Depends(get_db)
 ):
     """获取用户的对话列表"""
-    threads, total = await ChatThreadService.get_all_threads(user_id, db, page, page_size)
+    threads, total = await ChatThreadService.get_all_threads(current_user.user_id, db, page, page_size)
 
     return {
         "threads": [thread.to_dict() for thread in threads],

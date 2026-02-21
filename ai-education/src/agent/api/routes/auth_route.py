@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent.core.schemas.api_response import ApiResponse
 from agent.core.schemas.auth_schemas import LoginRequest, RegisterRequest
 from agent.core.services.user_service import UserService
-from agent.utils.rationalDB_util import RelationalDBUtil, get_db
+from agent.utils.rationalDB_util import  get_db
 
 router = APIRouter()
 
@@ -36,6 +36,20 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         jwt_token = JWTUtil.generate_token(data=data)
         return ApiResponse.success(data={"token":jwt_token})
     return ApiResponse.success("理论上到不了这里")
+
+@router.post("/code-login")
+async def login_by_code(request: LoginRequest):
+    res = await UserService.verify_code_value(request)
+    return ApiResponse.success(res)
+
+@router.get("/get-phone-code")
+async def get_phone_code(phone: str):
+    can_send_code = await UserService.can_send_code(phone)
+    if can_send_code:
+        phone_code = await UserService.send_phone_code(phone)
+        return ApiResponse.success(phone_code)
+    else:
+        return ApiResponse.error("请求过于频繁，请60秒后重试")
 
 
 
