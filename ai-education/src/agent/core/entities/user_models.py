@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Enum, DateTime, Index, Boolean
+from sqlalchemy import Column, String, Enum, DateTime, Index, Boolean, BigInteger
 from agent.core.entities.base import Base
 
 
@@ -15,7 +15,8 @@ class User(Base):
     __tablename__ = "users"
 
     # 主键和基础字段
-    user_id = Column(String(36), primary_key=True, comment="业务用户ID(UUID)")
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(String(100), unique=True, nullable=False,comment="用户业务id")
     password = Column(String(255), nullable=True, comment="哈希密码")
     role = Column(Enum(UserRole), nullable=False, index=True, comment="用户角色")
     phone = Column(String(20), nullable=False, unique=True, comment="手机号")
@@ -53,6 +54,7 @@ class User(Base):
         Index('user_idx_updated_at', 'updated_at'),
         Index('user_idx_phone', 'phone'),  # phone已有unique，但显式声明索引
         Index('user_idx_active', 'is_active'),
+        Index('user_idx_user_id','user_id')
 
         # 如果需要按创建时间倒序查询频繁，可以加desc索引
         # Index('idx_created_desc', 'created_at.desc'),
@@ -72,6 +74,7 @@ class User(Base):
 
         # 基础字段
         data = {
+            'id': self.id,
             'user_id': self.user_id,
             'role': self.role.value if self.role else None,  # Enum转值
             'phone': self.phone,

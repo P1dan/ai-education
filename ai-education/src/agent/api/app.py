@@ -9,6 +9,7 @@ from agent.api.routes.chat_route import router as chat_router
 from agent.api.routes.history_route import router as history_router
 from agent.api.routes.ai_assistant_route import router as ai_assistant_router
 from agent.api.routes.auth_route import router as auth_router
+from agent.configs.redis_config import RedisClient, init_redis
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
@@ -43,6 +44,8 @@ async def lifespan(app : FastAPI):
         collection_name=os.getenv("POSTGRES_COLLECTION_NAME"),
         embedding_dim=1536
     )
+    # 初始化redis
+    await init_redis()
 
     # 初始化agents
     agents['rag_agent'] = await create_rag_agent()

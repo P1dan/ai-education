@@ -52,7 +52,6 @@ async def get_phone_code(phone: str):
         return ApiResponse.error("请求过于频繁，请60秒后重试")
 
 
-
 @router.get("/test")
 async def test(current_user: User = Depends(get_current_user_from_token)):
     return {

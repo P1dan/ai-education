@@ -4,6 +4,7 @@ from agent.configs.redis_config import RedisClient
 from agent.core.schemas.auth_schemas import RegisterRequest, LoginRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from agent.core.repositories.user_repo import UserRepository
+from agent.utils.email_util import EmailUtil
 from agent.utils.log_util import log
 
 
@@ -100,6 +101,7 @@ class UserService:
             log.info(f"验证码已存储: phone={phone}, code={stored_value}, ttl={ttl}秒")
 
             # 在实际生产环境中，这里应该调用短信服务商API发送验证码
+
             # 现在先返回方便测试
             return value
 

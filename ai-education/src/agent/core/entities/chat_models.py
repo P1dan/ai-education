@@ -49,6 +49,7 @@ class ConversationThread(Base):
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式，用于API响应"""
         return {
+            "id": self.id,
             "thread_id": self.thread_id,
             "user_id": self.user_id,
             "title": self.title,
