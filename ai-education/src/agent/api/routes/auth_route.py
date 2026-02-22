@@ -35,7 +35,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         }
         jwt_token = JWTUtil.generate_token(data=data)
         return ApiResponse.success(data={"token":jwt_token})
-    return ApiResponse.success("理论上到不了这里")
+    return ApiResponse.error("登录失败")
 
 @router.post("/code-login")
 async def login_by_code(request: LoginRequest):

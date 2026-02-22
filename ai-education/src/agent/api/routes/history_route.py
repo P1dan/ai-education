@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent.core.schemas.api_response import ApiResponse
 from agent.core.schemas.history_schemas import EditThreadRequest, DeleteThreadRequest
 from agent.core.services.chat_thread_service import ChatThreadService
-from agent.utils.rationalDB_util import RelationalDBUtil, get_db
+from agent.utils.rationalDB_util import get_db
 
 # 对历史会话进行处理的路由，包括获取全部会话，获取会话消息记录，编辑/删除会话等等
 
@@ -25,19 +25,17 @@ async def list_threads(
     """获取用户的对话列表"""
     threads, total = await ChatThreadService.get_all_threads(current_user.user_id, db, page, page_size)
 
-    return {
+    data = {
         "threads": [thread.to_dict() for thread in threads],
         "total": total,
         "page": page,
         "page_size": page_size
     }
+    return ApiResponse.success(data=data)
 
 @router.get("/messages")
 async def get_messages(
         thread_id: str = Query(..., description="对话线程ID"),
-        limit: int = Query(20, ge=1, le=100),
-        cursor_id: Optional[str] = Query(None, description="游标消息ID"),
-        direction: str = Query("before", description="方向：before=获取更早的消息，after=获取更新的消息"),
         db: AsyncSession = Depends(get_db)
 ):
     """
@@ -45,15 +43,11 @@ async def get_messages(
     """
     result = await ChatThreadService.get_all_messages(
         thread_id=thread_id,
-        limit=limit,
-        cursor_id=cursor_id,
-        direction=direction,
         db=db
     )
     data = {
         "thread_id": thread_id,
         "messages": [msg.to_dict() for msg in result["messages"]],
-        "pagination": result["pagination"]
     }
     return ApiResponse.success(data=data)
 
