@@ -36,16 +36,18 @@ async def list_threads(
 @router.get("/messages")
 async def get_messages(
         thread_id: str = Query(..., description="对话线程ID"),
+        current_user: User = Depends(get_current_user_from_token),
         db: AsyncSession = Depends(get_db)
 ):
     """
-    获取对话消息 - 推荐使用游标分页
+    获取对话消息
     """
     result = await ChatThreadService.get_all_messages(
         thread_id=thread_id,
         db=db
     )
     data = {
+        "user_id": current_user.user_id,
         "thread_id": thread_id,
         "messages": [msg.to_dict() for msg in result["messages"]],
     }

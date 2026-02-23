@@ -22,7 +22,7 @@ from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil, get_db
 
 # 基本聊天接口
-# todo 看一下能不能把db获取独立出来
+# todo 看一下能不能把db获取独立出来（保留吧，一个请求级别的单例，不同请求互相隔离）
 
 
 
@@ -70,7 +70,7 @@ async def chat_stream(
             log.error(f"流式接口异常: {e}")
             yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
         finally:
-            # 注意：这里不需要手动commit或close，get_db()会管理
+            # 注意：这里不需要手动commit或close，get_db会管理
             # 如果需要提交，可以在这里加：await db.commit()
             yield "data: [DONE]\n\n"
 
