@@ -5,20 +5,14 @@ from langgraph.graph import MessagesState, StateGraph
 from langgraph.store.memory import InMemoryStore
 from psycopg import AsyncConnection
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+from agent.configs.checkpoint_config import get_checkpointer
 from agent.configs.llm_configs import deepseek
 
 
 # 定义图状态，这里直接先简单继承MessagesState
 class ChatState(MessagesState):
     pass
-
-
-# 开发环境中的记忆存储，一次运行中的存储
-# checkpointer = InMemorySaver()
-# store = InMemoryStore()
-
-# 使用第三方的postgresql作为存储当前图的checkpoint
-DB_URL = "postgresql://postgres:lyh040506@localhost:5432/postgres?sslmode=disable"
 
 
 async def create_chat_graph():
@@ -39,12 +33,7 @@ async def create_chat_graph():
     builder.add_edge(START,'chat')
     builder.add_edge('chat',END)
 
-    # 使用第三方的postgresql持久化存储上下文
-    # 当前模式是只有一个全局的agent，因此也不会频繁建立连接，所以目前先在agent内部定义检查点
-    conn = await  AsyncConnection.connect(DB_URL,autocommit=True) # 设置自动提交，使得创建索引成功
-    checkpointer = AsyncPostgresSaver(conn)
-
-    await checkpointer.setup()
+    checkpointer = await get_checkpointer()
 
     graph = builder.compile(checkpointer=checkpointer)
     return graph

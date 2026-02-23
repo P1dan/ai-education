@@ -1,5 +1,6 @@
 from typing import Optional
 
+from agent.configs.checkpoint_config import delete_thread_in_rag_agent
 from agent.configs.security_config import get_current_user_from_token
 from agent.core.entities.user_models import User
 from fastapi import APIRouter, Depends, Query
@@ -71,4 +72,5 @@ async def delete_thread(
         db: AsyncSession = Depends(get_db)
 ):
     success = await ChatThreadService.delete_thread(request,db)
-    return ApiResponse.success(data = {"success":success})
+    success2 = await delete_thread_in_rag_agent(request.thread_id)
+    return ApiResponse.success(data = {"database":success,"graph":success2})

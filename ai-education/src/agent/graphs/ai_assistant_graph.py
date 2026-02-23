@@ -3,16 +3,16 @@ from langgraph.constants import START, END
 from langgraph.graph import MessagesState, StateGraph
 from psycopg import AsyncConnection
 
+from agent.configs.checkpoint_config import get_checkpointer
 from agent.configs.llm_configs import deepseek
 from agent.tools.basic_tool_node import BasicToolNode
 from agent.tools.rag_tool import RagTool
+from agent.utils.log_util import log
 
 
 class State(MessagesState):
     pass
 
-# 先用chat库吧，先不用默认的了
-DB_URL = "postgresql://postgres:lyh040506@localhost:5432/chat?sslmode=disable"
 
 
 async def create_rag_agent():
@@ -76,14 +76,7 @@ async def create_rag_agent():
 
     builder.add_edge('tools','chatbot') # 工具调用完自然回到大模型节点
     # 不需要结束边了
-
-    # 使用第三方的postgresql持久化存储上下文
-    # 当前模式是只有一个全局的agent，因此也不会频繁建立连接，所以目前先在agent内部定义检查点
-    conn = await  AsyncConnection.connect(DB_URL,autocommit=True) # 设置自动提交，使得创建索引成功
-    checkpointer = AsyncPostgresSaver(conn)
-
-    await checkpointer.setup()
-
+    checkpointer = await get_checkpointer()
     graph = builder.compile(checkpointer=checkpointer)
 
     return graph
