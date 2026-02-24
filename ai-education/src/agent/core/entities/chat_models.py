@@ -1,12 +1,12 @@
-# src/core/models/chat_models.py
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, Enum, JSON, ForeignKey, Index, BigInteger
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 import enum
 
-Base = declarative_base()
+from agent.core.entities.base import Base
 
 
 class MessageRole(str, enum.Enum):
@@ -20,14 +20,14 @@ class ConversationThread(Base):
     __tablename__ = "conversation_threads"
 
     # 主键和基础字段
-    thread_id = Column(String(36), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    thread_id = Column(String(36), unique=True, nullable=False)
     user_id = Column(String(255), nullable=True, index=True)
     title = Column(String(500), nullable=True)
     message_count = Column(Integer, default=0)
-
-    # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(TIMESTAMP(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 
     # 状态标记
@@ -41,14 +41,15 @@ class ConversationThread(Base):
 
     # 添加索引
     __table_args__ = (
-        Index('idx_user_created', 'user_id', 'created_at'),
-        Index('idx_updated_at', 'updated_at'),
-        Index('idx_active_updated', 'is_active', 'updated_at'),
+        Index('thread_idx_user_created', 'user_id', 'created_at'),
+        Index('thread_idx_updated_at', 'updated_at'),
+        Index('thread_idx_active_updated', 'is_active', 'updated_at'),
     )
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式，用于API响应"""
         return {
+            "id": self.id,
             "thread_id": self.thread_id,
             "user_id": self.user_id,
             "title": self.title,
@@ -84,16 +85,16 @@ class Message(Base):
     model = Column(String(50), nullable=True)
 
     # 时间戳
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # 扩展字段 - 注意：这里改为了 extra_data
     extra_data = Column(JSON, default=dict)
 
     # 索引
     __table_args__ = (
-        Index('idx_thread_created', 'thread_id', 'created_at'),
-        Index('idx_created_at', 'created_at'),
-        Index('idx_thread_role', 'thread_id', 'role'),
+        Index('message_idx_thread_created', 'thread_id', 'created_at'),
+        Index('message_idx_created_at', 'created_at'),
+        Index('message_idx_thread_role', 'thread_id', 'role'),
     )
 
     def to_dict(self) -> Dict[str, Any]:

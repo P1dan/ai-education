@@ -1,20 +1,19 @@
-# src/core/repository/message_repo.py
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, asc
-from datetime import datetime, timezone
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, asc, select, func
 from agent.core.entities.chat_models import Message
 from agent.core.repositories.base_repo import BaseRepository
 
 
-class MessageRepository(BaseRepository):
+class MessageRepository(BaseRepository[Message]):
     """消息数据访问层"""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         # 调用父类初始化，传入模型类
-        super().__init__(db, Message)
+        super().__init__(db, Message)  # 这里应该是Message，不是AsyncSession
 
-    def add_message(self, thread_id: str, content: str, role: str,
+    async def add_message(self, thread_id: str, content: str, role: str,
                     message_id: str, tokens: int = 0, model: Optional[str] = None) -> Message:
         """添加消息"""
         message = Message(
@@ -24,35 +23,59 @@ class MessageRepository(BaseRepository):
             role=role,
             tokens=tokens,
             model=model,
-            # created_at=datetime.now(timezone.utc)  # 时区感知的UTC时间
         )
-
         self.db.add(message)
+        await self.db.flush([message])
         return message
 
-    def get_messages_by_thread(self, thread_id: str,
-                               limit: int = 50,
-                               offset: int = 0,
-                               order: str = "asc") -> List[Message]:
+    async def get_messages_by_thread(self, thread_id: str,
+                                     limit: int = 50,
+                                     offset: int = 0,
+                                     order: str = "asc") -> List[Message]:
         """获取指定线程的消息"""
-        query = self.db.query(Message).filter(
+        query = select(Message).where(
             Message.thread_id == thread_id
         )
 
-        # 明确指定查询的是 Message 对象，不是 Message 类
         if order == "desc":
             query = query.order_by(desc(Message.created_at))
         else:
             query = query.order_by(asc(Message.created_at))
 
-        # 分页
-        messages = query.offset(offset).limit(limit).all()
-        return messages  # 这应该返回 List[Message] 而不是 List[Type[Message]]
+        query = query.offset(offset).limit(limit)
 
-    def get_message_count_by_thread(self, thread_id: str) -> int:
-        """获取指定线程的消息数量"""
-        from sqlalchemy import func
-        count = self.db.query(func.count(Message.id)).filter(
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+
+        # 新增：基于游标的分页方法
+    async def get_messages_by_cursor(
+            self,
+            thread_id: str,
+    ) -> List[Message]:
+        """
+        Args:
+            thread_id: 对话ID
+
+        """
+        query = select(Message).where(
             Message.thread_id == thread_id
-        ).scalar()
-        return count or 0
+        )
+
+        query = query.order_by(desc(Message.created_at))
+
+        result = await self.db.execute(query)
+        messages = list(result.scalars().all())
+
+        return messages
+
+
+
+
+    async def get_message_count_by_thread(self, thread_id: str) -> int:
+        """获取指定线程的消息数量"""
+        query = select(func.count()).select_from(Message).where(
+            Message.thread_id == thread_id
+        )
+        result = await self.db.execute(query)
+        return result.scalar() or 0

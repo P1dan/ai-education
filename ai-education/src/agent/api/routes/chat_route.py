@@ -1,97 +1,85 @@
-# 准备初始状态
+import json
 import time
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from agent.configs.security_config import get_current_user_from_token
+from agent.core.entities.user_models import User
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uuid
 from langchain_core.messages import HumanMessage, AIMessage
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from requests import request
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
+
 from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.core.schemas.chat_schemas import ChatRequest
-from agent.graphs.chat_graph import create_chat_graph
-from agent.utils.db_utils import get_db
+from agent.core.services.ai_chat_service import AIChatService
+
 from agent.utils.log_util import log
+from agent.utils.rationalDB_util import RelationalDBUtil, get_db
 
-# 在模块级别创建全局智能体实例
-_chat_agent = None
+# 基本聊天接口
+# todo 看一下能不能把db获取独立出来（保留吧，一个请求级别的单例，不同请求互相隔离）
 
-async def get_chat_agent():
-    """获取或创建聊天智能体（单例）"""
-    # todo 全局单例，后续可能需要进行加锁，防止并发创建多个
-    global _chat_agent
-    if _chat_agent is None:
-        _chat_agent = await create_chat_graph()
-    return _chat_agent
+
 
 
 router = APIRouter()
 
 @router.post("/chat")
-async def chat(request: ChatRequest, db: Session = Depends(get_db)):
-    # 1. 直接创建Repository实例
-    thread_repo = ThreadRepository(db)
-    msg_repo = MessageRepository(db)
+async def chat(chat_request: ChatRequest, db: AsyncSession = Depends(get_db)):
+    """普通聊天接口（非流式）"""
+    from agent.api.app import agents  # ← 延迟导入
+    agent = agents['rag_agent']
+    res = await AIChatService.ai_chat(chat_request, agent, db)
+    return res
 
-    # 2. 处理线程（存在则获取，不存在则创建）
-    if request.thread_id:
-        thread_id = request.thread_id
-        thread = thread_repo.get_by_thread_id(request.thread_id)
-        if not thread:
-            # 线程不存在，可以创建新线程或返回错误
-            thread = thread_repo.create_thread(
-                thread_id=request.thread_id,
-                user_id=request.user_id  # 如果有的话
-            )
+# 流式好像只能用get接口，参数只能这样写
+@router.get("/stream")
+async def chat_stream(
+        message: str = Query(..., min_length=1),
+        thread_id: Optional[str] = None,
+        agent_name: Optional[str] = 'rag_agent',
+        current_user: User = Depends(get_current_user_from_token),
+        db: AsyncSession = Depends(get_db)  # 使用依赖注入
+):
+    """
+    流式聊天接口（SSE）
+    """
+    from agent.api.app import agents  # ← 延迟导入
+    if agent_name in agents:
+        agent = agents[agent_name]
     else:
-        # 创建新线程
-        thread_id = str(uuid.uuid4())
-        thread = thread_repo.create_thread(
-            thread_id=thread_id,
-            user_id=request.user_id,
-            title=request.message[:30] + "..."  # 用第一条消息生成标题
+        # 处理不存在的情况，比如设默认值或报错
+        log.error('找不到相应的智能体')
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent '{agent_name}' not found"
         )
 
-    # 3. 保存用户消息
-    user_message = msg_repo.add_message(
-        thread_id=thread.thread_id,
-        content=request.message,
-        role="user",
-        message_id=f"{thread.thread_id}_user_{int(time.time())}"
+    stream_request = ChatRequest(user_id=current_user.user_id, message=message, thread_id=thread_id)
+
+    async def generate():
+        try:
+            async for chunk in AIChatService.ai_chat_stream(stream_request, agent, db):
+                yield chunk
+        except Exception as e:
+            log.error(f"流式接口异常: {e}")
+            yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
+        finally:
+            # 注意：这里不需要手动commit或close，get_db会管理
+            # 如果需要提交，可以在这里加：await db.commit()
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
     )
-
-    # 4. 调用AI获取回复（你原有的逻辑）
-    chat_agent = await get_chat_agent()
-    # ... 你原有的AI调用代码
-    # 准备图的状态和配置
-    initial_state = {
-        "messages": [HumanMessage(content=user_message.content)]
-    }
-    config = {"configurable": {"thread_id": thread_id}}
-
-    # 调用聊天图
-    result = await chat_agent.ainvoke(initial_state, config)
-    ai_response = result["messages"][-1].content
-
-    # 5. 保存AI回复
-    ai_message = msg_repo.add_message(
-        thread_id=thread.thread_id,
-        content=ai_response,
-        role="assistant",
-        message_id=f"{thread.thread_id}_ai_{int(time.time())}",
-        model="gpt-4"  # 根据实际模型填写
-    )
-
-    # 6. 更新消息计数
-    thread_repo.increment_message_count(thread.thread_id)
-
-    # 7. 提交事务
-    db.commit()
-
-    return {
-        "response": ai_response,
-        "thread_id": thread.thread_id,
-        "message_id": ai_message.message_id
-    }
-
-

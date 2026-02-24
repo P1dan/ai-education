@@ -166,6 +166,7 @@ cython_debug/
 output/
 outputs/
 results/
+out/
 
 # 数据文件
 data/
@@ -235,3 +236,10 @@ _site/
 *.backup
 *.orig
 *.rej
+
+
+ai-education/src/agent/chroma_db
+ai-education/static
+ai-education/tests
+
+ai-education/.github
