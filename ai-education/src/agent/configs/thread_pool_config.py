@@ -9,7 +9,7 @@ from agent.utils.log_util import log
 # todo 可能考虑把这个封装成一个工具类对象，更规范
 
 # 全局线程池实例
-_executor: concurrent.futures.ThreadPoolExecutor = None
+_executor: concurrent.futures.ThreadPoolExecutor | None = None
 
 def init_thread_pool(max_workers: int = 25, thread_name_prefix: str = "ai_education_") -> None:
     """
