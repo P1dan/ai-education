@@ -15,6 +15,7 @@ from agent.configs.thread_pool_config import init_thread_pool
 import os
 
 from agent.graphs.ai_assistant_graph import create_rag_agent
+from agent.graphs.learning_plan import build_learning_plan_graph
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
 from agent.utils.vectorDB_util import VectorDBUtil
@@ -53,6 +54,7 @@ async def lifespan(app : FastAPI):
 
     # 初始化agents
     agents['rag_agent'] = await create_rag_agent()
+    agents['learning_plan_agent'] = await build_learning_plan_graph()
     log.success("agents初始化成功")
     # 初始化线程池
     init_thread_pool()

@@ -30,7 +30,7 @@ async def create_rag_agent():
     # LLM节点函数
     async def chatbot(state: State):
         # 直接传递消息给 chain
-        response = await llm_with_rag.ainvoke(state["messages"])
+        response = await llm_with_rag.with_config({"tags":["stream_output"]}).ainvoke(state["messages"])
         return {"messages": [response]}
 
     # 添加LLM节点

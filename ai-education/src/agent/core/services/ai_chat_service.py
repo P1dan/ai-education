@@ -3,7 +3,7 @@ import time
 import uuid
 
 from fastapi import Depends
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,14 +130,17 @@ class AIChatService:
             ai_msg_id = f"{thread.thread_id}_ai_{int(time.time())}"
             content_chunks = []
 
-            # --- 5. 流式生成并推送 ---
             async for event in agent.astream_events(initial_state, config, version="v1"):
+                # 只处理聊天模型流事件
                 if event["event"] == "on_chat_model_stream":
-                    chunk = event["data"]["chunk"].content
-                    if chunk:
-                        content_chunks.append(chunk)
-                        data_str = json.dumps({'content': chunk}, ensure_ascii=False)
-                        yield f"data: {data_str}\n\n"
+                    # 关键：检查是否包含 "stream_output" 标签
+                    tags = event.get("tags", [])
+                    if "stream_output" in tags:  # 只有打了标签的节点才会输出
+                        chunk = event["data"]["chunk"].content
+                        if chunk:
+                            content_chunks.append(chunk)
+                            data_str = json.dumps({'content': chunk}, ensure_ascii=False)
+                            yield f"data: {data_str}\n\n"
 
             # --- 6. 流结束：保存完整AI消息 ---
             if content_chunks:  # 确保有内容
