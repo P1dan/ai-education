@@ -1,3 +1,4 @@
+from langchain_core.messages import AIMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.constants import START, END
 from langgraph.graph import MessagesState, StateGraph
@@ -28,10 +29,36 @@ async def create_rag_agent():
     # 开始定义节点了
 
     # LLM节点函数
+    # async def chatbot(state: State):
+    #     # 直接传递消息给 chain
+    #     response = await llm_with_rag.with_config({"tags":["stream_output"]}).ainvoke(state["messages"])
+    #     return {"messages": [response]}
+
     async def chatbot(state: State):
-        # 直接传递消息给 chain
-        response = await llm_with_rag.with_config({"tags":["stream_output"]}).ainvoke(state["messages"])
-        return {"messages": [response]}
+        messages = state["messages"]
+
+        # 使用 .astream() 并在内部通过事件传递
+        # 这样可以更精确地控制每个 chunk 的发送时机
+        full_content = ""
+
+        # 关键：通过 with_config 确保标签正确传递
+        async for chunk in llm_with_rag.with_config(
+                {"tags": ["stream_output", "chatbot_node"]}
+        ).astream(messages):
+            # 提取内容
+            if hasattr(chunk, 'content'):
+                content = chunk.content
+            else:
+                content = str(chunk)
+
+            if content:  # 只处理非空内容
+                full_content += content
+
+                # 这里可以通过某种方式通知 astream_events
+                # 但通常不需要，因为 astream_events 会自动捕获 on_chat_model_stream 事件
+
+        # 返回完整内容
+        return {"messages": [AIMessage(content=full_content)]}
 
     # 添加LLM节点
     builder.add_node('chatbot',chatbot)
