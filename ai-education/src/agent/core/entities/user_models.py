@@ -19,7 +19,7 @@ class User(Base):
     user_id = Column(String(100), unique=True, nullable=False,comment="用户业务id")
     password = Column(String(255), nullable=True, comment="哈希密码")
     role = Column(Enum(UserRole), nullable=False, index=True, comment="用户角色")
-    phone = Column(String(20), nullable=False, unique=True, comment="手机号")
+    email = Column(String(20), nullable=False, unique=True, comment="邮箱")
 
     # 时间戳字段
     created_at = Column(
@@ -52,7 +52,7 @@ class User(Base):
         # 单独索引
         Index('user_idx_created_at', 'created_at'),
         Index('user_idx_updated_at', 'updated_at'),
-        Index('user_idx_phone', 'phone'),  # phone已有unique，但显式声明索引
+        Index('user_idx_email', 'email'),  # email已有unique，但显式声明索引
         Index('user_idx_active', 'is_active'),
         Index('user_idx_user_id','user_id')
 
@@ -77,7 +77,7 @@ class User(Base):
             'id': self.id,
             'user_id': self.user_id,
             'role': self.role.value if self.role else None,  # Enum转值
-            'phone': self.phone,
+            'email': self.email,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'is_active': self.is_active,

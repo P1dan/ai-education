@@ -243,7 +243,7 @@ class UserRepository(BaseRepository[User]):
     async def create_user(
             self,
             user_id: str,
-            phone: str,
+            email: str,
             role: UserRole,
             password_hash: Optional[str] = None,
             **extra_fields
@@ -267,7 +267,7 @@ class UserRepository(BaseRepository[User]):
         try:
             user = await self.create(
                 user_id=user_id,
-                phone=phone,
+                email=email,
                 role=role,
                 password=password_hash,
                 is_active=True,
