@@ -11,6 +11,7 @@ from agent.api.routes.ai_assistant_route import router as ai_assistant_router
 from agent.api.routes.auth_route import router as auth_router
 from agent.configs.checkpoint_config import init_checkpointer
 from agent.configs.redis_config import RedisClient, init_redis
+from agent.configs.rerank_configs import init_reranker
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
@@ -39,8 +40,14 @@ async def lifespan(app : FastAPI):
     # 启动时执行
     log.info("🚀 应用启动中...")
 
+    # 初始化线程池
+    init_thread_pool()
+
     # 初始化检查点
     await init_checkpointer()
+
+    # 初始化重排模型
+    await init_reranker()
 
     # 初始化关系型数据库连接
     await RelationalDBUtil.init_database_async()
@@ -56,8 +63,7 @@ async def lifespan(app : FastAPI):
     agents['rag_agent'] = await create_rag_agent()
     agents['learning_plan_agent'] = await build_learning_plan_graph()
     log.success("agents初始化成功")
-    # 初始化线程池
-    init_thread_pool()
+
 
     # todo 这里可以添加其他初始化逻辑
 
