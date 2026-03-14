@@ -49,10 +49,10 @@ class VectorDBUtil:
             return
 
         # 设置集合名称
-        if collection_name:
-            cls._collection_name = collection_name
-        elif os.getenv("POSTGRES_COLLECTION_NAME"):
+        if os.getenv("POSTGRES_COLLECTION_NAME"):
             cls._collection_name = os.getenv("POSTGRES_COLLECTION_NAME")
+        elif collection_name:
+            cls._collection_name = collection_name
 
         # 构建连接字符串
         if not connection_string:
@@ -429,14 +429,19 @@ class VectorDBUtil:
         """列出所有集合/表"""
         session = cls.get_session()
         try:
+            # 修改为返回所有用户表，或者至少返回与向量相关的表
             result = session.execute(text("""
                 SELECT table_name 
                 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name LIKE '%_vector%' 
-                OR table_name IN ('documents', 'embeddings')
+                AND table_type = 'BASE TABLE'
+                -- 可以按需过滤，比如排除系统表
+                AND table_name NOT LIKE 'pg_%'
+                AND table_name NOT LIKE 'sql_%'
             """))
-            return [row[0] for row in result.fetchall()]
+            tables = [row[0] for row in result.fetchall()]
+            log.info(f"找到 {len(tables)} 个表: {tables}")
+            return tables
         finally:
             session.close()
 
