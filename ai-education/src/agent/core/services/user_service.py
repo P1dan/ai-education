@@ -28,7 +28,7 @@ class UserService:
     @staticmethod
     async def login_by_password(email: str, password: str,db: AsyncSession):
         """
-        用户登录服务，通过手机号和密码
+        用户登录服务，通过邮箱和密码
         """
         user_repo = UserRepository(db)
         user = await user_repo.get_by_email(email)
