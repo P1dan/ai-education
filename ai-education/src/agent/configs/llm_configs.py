@@ -13,3 +13,10 @@ deepseek = ChatOpenAI(
     api_key=MODEL_API_KEY,
     base_url=MODEL_API_URL
 )
+
+intent_classify = ChatOpenAI(
+    model="tongyi-intent-detect-v3",
+    temperature=1.3,
+    api_key=MODEL_API_KEY,
+    base_url=MODEL_API_URL
+)

@@ -15,7 +15,7 @@ from agent.configs.rerank_configs import init_reranker
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
-from agent.graphs.ai_assistant_graph import create_rag_agent
+from agent.graphs.chat_graph import create_rag_agent
 from agent.graphs.learning_plan import build_learning_plan_graph
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
