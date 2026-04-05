@@ -1,8 +1,10 @@
 import asyncio
 import json
 from http.client import responses
+from msilib import schema
 
 from langchain_core.messages import AIMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from agent.graphs.learning_plan.state import LearningState
@@ -29,9 +31,8 @@ async def collect_info(state: LearningState) -> LearningState:
 
     # 构建包含完整对话历史的prompt
     messages_history = state["messages"]  # 假设messages存储了所有对话
-
     prompt = f"""从以下对话历史中提取用户的学习相关信息。
-
+    
 当前已有信息：
 - 学习目标：{state.get('learning_goal', '')}
 - 用户背景：{state.get('background', '')}
@@ -60,7 +61,6 @@ async def collect_info(state: LearningState) -> LearningState:
 
     # 调用LLM提取信息
     res = await llm.ainvoke(prompt)
-
     try:
         # 解析返回的JSON
         import json
@@ -68,7 +68,6 @@ async def collect_info(state: LearningState) -> LearningState:
         json_match = re.search(r'\{.*\}', res.content, re.DOTALL)
         if json_match:
             extracted = json.loads(json_match.group())
-
             # 增量更新：只更新有值的字段
             if extracted.get("learning_goal"):
                 state["learning_goal"] = extracted["learning_goal"]
@@ -76,19 +75,15 @@ async def collect_info(state: LearningState) -> LearningState:
                 state["background"] = extracted["background"]
             if extracted.get("time_budget"):
                 state["time_budget"] = extracted["time_budget"]
-
     except Exception as e:
         print(f"解析提取结果失败: {e}")
         # 失败时保持原有值不变
-
     # 将用户消息添加到历史（假设消息已经在外面添加了）
     # state["messages"] 应该已经包含对话历史
     return state
 
 async def more_info(state: LearningState) -> LearningState:
     """获取更多信息的提示 - 使用LLM包装以实现流式输出"""
-    from langchain_core.prompts import ChatPromptTemplate
-    from langchain_openai import ChatOpenAI  # 根据您使用的模型调整
 
     goal = state.get("learning_goal", "").strip()
     background = state.get("background", "").strip()
@@ -133,25 +128,19 @@ async def more_info(state: LearningState) -> LearningState:
 
 请生成一段友好的提示消息：""")
     ])
-
-
-
     # 创建链并打上标签
     chain = prompt | llm.with_config({
         "tags": ["stream_output", "more_info_node"],
         "metadata": {"node_type": "greeting"}
     })
-
     # 直接调用链并保存结果到messages
     response = await chain.ainvoke({
         "provided_text": provided_text,
         "missing_text": missing_text
     })
-
     # 保存到messages
     from langchain_core.messages import AIMessage
     state["messages"] = [AIMessage(content=response.content)]
-
     return state
 
 async def refine_goal(state: LearningState) -> LearningState:
@@ -181,7 +170,7 @@ async def retrieve_knowledge(state: LearningState) -> LearningState:
     # state["knowledge_context"] = await loop.run_in_executor(
     #     None, lambda: rag.retrieve(query)
     # )
-    state["knowledge_context"] = "学习python前最好先学习数据结构与算法"
+    state["knowledge_context"] = "有丰富的上下文内容"
     return state
 
 async def decide_strategy(state: LearningState) -> LearningState:
@@ -202,7 +191,7 @@ async def decide_strategy(state: LearningState) -> LearningState:
     state["learning_strategy"] = res.content
     return state
 
-async def generate_plan(state: LearningState) -> LearningState:
+async def generate_plan_old(state: LearningState) -> LearningState:
     """生成学习计划"""
     prompt = f"""生成完整200字以内学习计划（Markdown格式）：
 
@@ -229,12 +218,17 @@ async def generate_plan(state: LearningState) -> LearningState:
     state["learning_plan"] = res.content
     return state
 
-async def review_plan(state: LearningState) -> LearningState:
-    """LLM自动审核学习计划"""
-    prompt = f"""你是一位严格的教学专家，请审核以下学习计划：
+async def generate_plan(state: LearningState) -> LearningState:
+    """生成带结构的学习路径（支持多叉树）"""
+
+    prompt = f"""
+你是一个学习路径规划专家，请生成“结构化学习路径图”。
 
 【学习目标】
 {state['refined_goal']}
+
+【学习策略】
+{state.get('learning_strategy',"")}
 
 【用户背景】
 {state['background']}
@@ -242,76 +236,144 @@ async def review_plan(state: LearningState) -> LearningState:
 【时间预算】
 {state['time_budget']}
 
-【学习计划】
-{state['learning_plan']}
+请严格输出 JSON（不要任何解释）：
 
-请从以下方面严格审核：
-1. 目标匹配度：计划是否完全针对学习目标？（30分）
-2. 可行性：在给定时间预算内是否切实可行？（25分）
-3. 完整性：是否包含必要的学习内容和实践？（25分）
-4. 个性化：是否考虑了用户背景？（20分）
-
-返回格式（必须是有效的JSON）：
 {{
-    "is_approved": true/false,
-    "feedback": "如果不通过，给出具体修改建议；如果通过，可以给出优化建议",
-    "score": 0-100,
-    "issues": ["具体问题1", "具体问题2"]
+  "nodes": [
+    {{
+      "id": 1,
+      "title": "阶段标题",
+      "overview": "阶段简介",
+      "content": "详细学习内容",
+      "duration":"预估学习时间",
+      "next": [2, 3]
+    }}
+  ]
 }}
 
-注意：只有分数≥80分才通过，否则返回is_approved: false
+要求：
+1. 节点数量 4-8 个
+2. id 必须从 1 开始递增
+3. next 是数组，表示可以进入的后续节点（支持多路径）
+4. 至少包含一个“分叉结构”（不是纯链）
+5. 学习路径必须合理（基础 → 进阶 → 项目）
+6. 不要生成孤立节点
+7. 必须是合法 JSON（双引号）
 """
 
-    res = await llm.ainvoke(prompt)
-    response = res.content
-
-    # 解析LLM返回
     try:
-        # 提取JSON部分（防止LLM输出多余内容）
-        import re
-        json_match = re.search(r'\{.*\}', response, re.DOTALL)
-        if json_match:
-            review = json.loads(json_match.group())
-        else:
-            review = json.loads(response)
+        res = await llm.ainvoke(prompt)
+        print("generate_plan       "+res.content)
+        import re, json
+        match = re.search(r"\{.*\}", res.content, re.DOTALL)
 
-        state["is_approved"] = review.get("is_approved", False)
-        state["feedback"] = review.get("feedback", "")
-        state["review_score"] = review.get("score", 0)
-        state["review_round"] = state.get("review_round", 0) + 1  # 增加审核轮次
+        if not match:
+            raise ValueError("未找到JSON!!!!!!!!")
+
+        plan_json = json.loads(match.group())
 
     except Exception as e:
-        print(f"解析审核结果失败: {e}，默认通过")
-        state["is_approved"] = True
-        state["feedback"] = "自动审核通过"
-        state["review_score"] = 85
-        state["review_round"] += 1
+        print("❌ generate_plan------JSON解析失败:", e)
+        plan_json = {"nodes": []}
+
+    state["learning_plan"] = plan_json.get("nodes", [])
+
+    return state
+
+async def review_plan(state: LearningState) -> LearningState:
+    """高稳定版本：LLM审核"""
+
+    prompt = f"""
+你是严格评审专家，只返回JSON，不要任何解释。
+
+目标：{state['refined_goal']}
+时间：{state['time_budget']}
+
+计划：
+{state['learning_plan'][:800]}  # ✅ 截断，减少token
+
+评分标准：
+- 匹配度(30)
+- 可行性(25)
+- 完整性(25)
+- 个性化(20)
+
+规则：
+- 分数>=80 才通过
+- 输出必须是JSON
+
+输出格式：
+{{
+"is_approved": true/false,
+"score": int,
+"feedback": "一句话核心建议",
+"issues": ["问题1","问题2"]
+}}
+"""
+
+    try:
+        res = await llm.ainvoke(prompt)
+
+        # ✅ 强制JSON解析（不再用贪婪正则）
+        review = json.loads(res.content)
+
+        state.update({
+            "is_approved": review.get("is_approved", False),
+            "feedback": review.get("feedback", ""),
+            "review_score": review.get("score", 0),
+            "review_round": state.get("review_round", 0) + 1
+        })
+
+    except Exception as e:
+        print(f"[review error] {e}")
+
+        # ✅ 保守策略（不直接通过）
+        state.update({
+            "is_approved": False,
+            "feedback": "解析失败，请重新优化计划",
+            "review_score": 60,
+            "review_round": state.get("review_round", 0) + 1
+        })
 
     return state
 
 async def revise_plan(state: LearningState) -> LearningState:
-    """根据审核反馈修改计划"""
+    """高可控版本：最小修改策略"""
+
     if not state.get("feedback"):
         return state
 
-    prompt = f"""根据审核反馈修改学习计划，100字以内：
+    # ✅ 收敛控制（最多3轮）
+    if state.get("review_round", 0) >= 3:
+        return state
 
-【审核反馈】
+    prompt = f"""
+你是学习规划优化专家。
+
+任务：
+只根据反馈“最小修改”原计划，不要重写。
+
+【反馈】
 {state['feedback']}
 
 【原计划】
-{state['learning_plan']}
+{state['learning_plan'][:800]}
 
-【学习目标】
-{state['refined_goal']}
+规则：
+1. 只修改有问题的部分
+2. 保持原结构
+3. 不新增无关内容
+4. 输出完整计划（Markdown）
 
-【用户背景】
-{state['background']}
+输出：
+只返回修改后的计划
+"""
 
-请输出修改后的完整计划（Markdown格式），确保解决了反馈中提到的问题："""
     res = await llm.ainvoke(prompt)
-    state["learning_plan"] = res.content
-    # 不清空feedback，让下一轮审核可以看到历史
+
+    # ✅ 防止空输出
+    if res.content.strip():
+        state["learning_plan"] = res.content
 
     return state
 

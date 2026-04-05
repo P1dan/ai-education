@@ -1,15 +1,13 @@
-from langchain_core.messages import AIMessage
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
-from agent.configs.checkpoint_config import get_checkpointer
-from agent.graphs.learning_plan.nodes import refine_goal, retrieve_knowledge, decide_strategy, generate_plan, \
-    review_plan, revise_plan, collect_info, more_info, last_node
+from agent.graphs.learning_plan.nodes import collect_info, more_info, refine_goal, retrieve_knowledge, generate_plan, \
+    review_plan, revise_plan, last_node
 from agent.graphs.learning_plan.state import LearningState
 
 MAX_REVIEW_ROUNDS = 3  # 最大审核轮次
 
-async def build_learning_plan_graph():
+def build_learning_plan_graph():
     """构建学习计划生成图"""
     builder = StateGraph(LearningState)
 
@@ -19,7 +17,7 @@ async def build_learning_plan_graph():
 
     builder.add_node("refine_goal", refine_goal)
     builder.add_node("retrieve_knowledge", retrieve_knowledge)
-    builder.add_node("decide_strategy", decide_strategy)
+    # builder.add_node("decide_strategy", decide_strategy)
     builder.add_node("generate_plan", generate_plan)
     builder.add_node("review_plan", review_plan)
     builder.add_node("revise_plan", revise_plan)
@@ -53,9 +51,10 @@ async def build_learning_plan_graph():
     builder.add_edge("more_info",END)
 
     builder.add_edge("refine_goal", "retrieve_knowledge")
-    builder.add_edge("retrieve_knowledge", "decide_strategy")
-    builder.add_edge("decide_strategy", "generate_plan")
-    builder.add_edge("generate_plan", "review_plan")
+    builder.add_edge("retrieve_knowledge", "generate_plan")
+    # builder.add_edge("retrieve_knowledge", "decide_strategy")
+    # builder.add_edge("decide_strategy", "generate_plan")
+    builder.add_edge("generate_plan", "last_node")
 
     # 审核后的条件路由
     def route_after_review(state: LearningState):
@@ -88,6 +87,4 @@ async def build_learning_plan_graph():
 
     builder.add_edge("last_node",END)
 
-    checkpointer= await get_checkpointer()
-
-    return builder.compile(checkpointer=checkpointer)
+    return builder.compile()

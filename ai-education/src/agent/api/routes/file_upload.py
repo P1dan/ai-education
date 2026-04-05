@@ -22,13 +22,6 @@ async def get_rag_agent():
 
 router = APIRouter()
 
-@router.post("/chat")
-async def chat(request: ChatRequest,db: AsyncSession = Depends(get_db)):
-    agent = await get_rag_agent()
-    res = await AIChatService.ai_chat(request, agent, db)
-    return res
-
-
 # todo 封装成一个文件服务 file_service(done)
 @router.post("/upload/ppt")
 async def upload_ppt(

@@ -1,7 +1,8 @@
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from langgraph.graph import MessagesState
 
 class LearningState(MessagesState):
+
     # ========= 用户输入 =========
     learning_goal: Optional[str]
     background: Optional[str]
@@ -12,6 +13,7 @@ class LearningState(MessagesState):
     knowledge_context: Optional[str]
     learning_strategy: Optional[str]
     learning_plan: Optional[str]
+    learning_path_graph: Optional[Dict[str, Any]]
 
     # ========= 审核流程 =========
     review_round: int           # 当前审核轮次
