@@ -102,4 +102,4 @@ app.include_router(history_router, prefix="/api/history_conversation", tags=["�
 app.include_router(file_upload_router, prefix="/api/ai_assistant", tags=["AI助教"])
 app.include_router(auth_router, prefix="/api/auth", tags=["注册登录"])
 
-app.include_router(generate_learning_path)
+app.include_router(generate_learning_path,tags=["学习路径规划"])
