@@ -22,7 +22,11 @@ class RagTool(BaseTool):
 
     def _run(self, query: str) -> str:
         print(f"用户想知道：{query}")
-        return search_and_rerank(query,os.getenv("POSTGRES_COLLECTION_NAME"))
+
+        # 现在先不用rag流程，后续再看
+        # return search_and_rerank(query,os.getenv("POSTGRES_COLLECTION_NAME"))
+
+        return "暂无结果"
 
 
 

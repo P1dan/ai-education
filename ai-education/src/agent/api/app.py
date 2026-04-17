@@ -10,6 +10,8 @@ from agent.api.routes.history_route import router as history_router
 from agent.api.routes.file_upload import router as file_upload_router
 from agent.api.routes.auth_route import router as auth_router
 from agent.api.routes.learning_path import router as generate_learning_path
+from agent.api.routes.personalized_practice import router as personalized_practice
+
 from agent.configs.checkpoint_config import init_checkpointer
 from agent.configs.redis_config import RedisClient, init_redis
 from agent.configs.rerank_configs import init_reranker
@@ -103,3 +105,4 @@ app.include_router(file_upload_router, prefix="/api/ai_assistant", tags=["AI助�
 app.include_router(auth_router, prefix="/api/auth", tags=["注册登录"])
 
 app.include_router(generate_learning_path,tags=["学习路径规划"])
+app.include_router(personalized_practice,tags=["个性化练习"])
