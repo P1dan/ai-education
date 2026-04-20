@@ -24,9 +24,9 @@ class RagTool(BaseTool):
         print(f"用户想知道：{query}")
 
         # 现在先不用rag流程，后续再看
-        # return search_and_rerank(query,os.getenv("POSTGRES_COLLECTION_NAME"))
+        return search_and_rerank(query,os.getenv("POSTGRES_COLLECTION_NAME"))
 
-        return "暂无结果"
+        # return "暂无结果"
 
 
 
