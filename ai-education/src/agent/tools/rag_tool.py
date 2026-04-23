@@ -3,7 +3,7 @@ import os
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from agent.configs.rerank_configs import get_reranker
+from agent.configs.rerank_configs import rerank_results
 from agent.utils.vectorDB_util import VectorDBUtil
 
 
@@ -41,7 +41,8 @@ STOP_WORDS = {'的', '了', '是', '在', '和', '与', '或', '有', '用', '�
 def search_and_rerank(query: str, collection_name: str,
                       top_k: int = 5,
                       vector_weight: float = 0.6,
-                      keyword_weight: float = 0.4) -> str:
+                      keyword_weight: float = 0.4,
+                      use_rerank: bool = True) -> str:
     """
     混合检索 + 重排序，直接返回格式化字符串给LLM
 
@@ -51,6 +52,8 @@ def search_and_rerank(query: str, collection_name: str,
         top_k: 最终返回几条
         vector_weight: 向量分数权重
         keyword_weight: 关键词分数权重
+        use_rerank: 是否使用千问重排序
+        async_mode: 是否异步执行重排序（需要配合线程池使用）
 
     Returns:
         格式化后的检索结果字符串
@@ -71,6 +74,7 @@ def search_and_rerank(query: str, collection_name: str,
         vector_res = session.execute(text(vector_sql), {"embedding": query_embedding})
         vector_results = {
             row.id: {
+                "id": row.id,
                 "content": row.content,
                 "metadata": row.metadata,
                 "vector_score": float(row.score),
@@ -101,6 +105,7 @@ def search_and_rerank(query: str, collection_name: str,
                     vector_results[row.id]["keyword_score"] = float(row.score)
                 else:
                     vector_results[row.id] = {
+                        "id": row.id,
                         "content": row.content,
                         "metadata": row.metadata,
                         "vector_score": 0.0,
@@ -115,7 +120,7 @@ def search_and_rerank(query: str, collection_name: str,
         candidates = []
         for doc_id, doc in vector_results.items():
             doc["hybrid_score"] = vector_weight * doc["vector_score"] + keyword_weight * doc["keyword_score"]
-            doc["id"] = doc_id
+            doc["similarity"] = doc["hybrid_score"]  # 添加similarity字段供重排序使用
             candidates.append(doc)
 
         # 取前10做重排序
@@ -124,24 +129,44 @@ def search_and_rerank(query: str, collection_name: str,
     finally:
         session.close()
 
-    # ========== 4. 重排序 ==========
-    pairs = [[query, doc["content"]] for doc in candidates]
-    reranker = get_reranker()
-    rerank_scores = reranker.predict(pairs)
+    # ========== 4. 使用千问重排序 ==========
+    if use_rerank:
+        # 调用重排序函数
+        # 注意：这里会同步调用API，如果担心阻塞，可以考虑使用线程池
+        reranked_results = rerank_results(query, candidates, top_k=top_k)
 
-    for doc, score in zip(candidates, rerank_scores):
-        doc["final_score"] = float(score)
-
-    # 按重排分数排序，取top_k
-    final_results = sorted(candidates, key=lambda x: x["final_score"], reverse=True)[:top_k]
+        # 使用重排序后的结果
+        if reranked_results:
+            final_results = reranked_results
+        else:
+            # 重排序失败，回退到混合检索结果
+            print("⚠️ 重排序失败，使用混合检索结果")
+            final_results = candidates[:top_k]
+            # 为结果添加final_score
+            for doc in final_results:
+                doc['final_score'] = doc['hybrid_score']
+    else:
+        # 不使用重排序，直接使用混合检索结果
+        final_results = candidates[:top_k]
+        for doc in final_results:
+            doc['final_score'] = doc['hybrid_score']
 
     # ========== 5. 格式化为字符串 ==========
     output_lines = [f"找到 {len(final_results)} 条相关信息：\n"]
 
     for i, doc in enumerate(final_results, 1):
         source = doc["metadata"].get("source", "未知来源") if doc["metadata"] else "未知来源"
+
+        # 获取最终分数
+        final_score = doc.get('final_score', doc.get('rerank_score', doc.get('hybrid_score', 0)))
+
+        # 可选：显示更多调试信息
+        debug_info = ""
+        if use_rerank and 'rerank_score' in doc:
+            debug_info = f" [重排分:{doc['rerank_score']:.3f}|混合分:{doc['hybrid_score']:.3f}]"
+
         output_lines.append(
-            f"[{i}] 相关度: {doc['final_score']:.3f}\n"
+            f"[{i}] 相关度: {final_score:.3f}{debug_info}\n"
             f"来源: {source}\n"
             f"内容: {doc['content'][:500]}{'...' if len(doc['content']) > 500 else ''}\n"
         )

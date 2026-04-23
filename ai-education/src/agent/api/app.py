@@ -15,7 +15,6 @@ from agent.api.routes.text_sorting import router as text_sorting
 
 from agent.configs.checkpoint_config import init_checkpointer
 from agent.configs.redis_config import RedisClient, init_redis
-from agent.configs.rerank_configs import init_reranker
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
@@ -49,9 +48,6 @@ async def lifespan(app : FastAPI):
 
     # 初始化检查点
     await init_checkpointer()
-
-    # 初始化重排模型
-    await init_reranker()
 
     # 初始化关系型数据库连接
     await RelationalDBUtil.init_database_async()
