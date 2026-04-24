@@ -13,6 +13,8 @@ from agent.api.routes.learning_path import router as generate_learning_path
 from agent.api.routes.personalized_practice import router as personalized_practice
 from agent.api.routes.text_sorting import router as text_sorting
 
+from agent.api.routes.recommendation.recommendation import router as recommendation
+
 from agent.configs.checkpoint_config import init_checkpointer
 from agent.configs.redis_config import RedisClient, init_redis
 from agent.configs.thread_pool_config import init_thread_pool
@@ -61,7 +63,6 @@ async def lifespan(app : FastAPI):
 
     # 初始化agents
     agents['rag_agent'] = await create_rag_agent()
-    log.success("agents初始化成功")
 
 
     # todo 这里可以添加其他初始化逻辑
@@ -100,6 +101,8 @@ app.include_router(chat_router, prefix="/api/chat_conversation", tags=["聊天�
 app.include_router(history_router, prefix="/api/history_conversation", tags=["历史记录"])
 app.include_router(file_upload_router, prefix="/api/ai_assistant", tags=["AI助教"])
 app.include_router(auth_router, prefix="/api/auth", tags=["注册登录"])
+
+app.include_router(recommendation,tags=['推荐课程'])
 
 app.include_router(generate_learning_path,tags=["学习路径规划"])
 app.include_router(personalized_practice,tags=["个性化练习"])
