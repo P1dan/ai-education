@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from email.utils import formataddr
-from typing import Tuple, Optional
+from typing import Tuple
 import random
 import string
 import os

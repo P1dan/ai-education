@@ -1,11 +1,10 @@
 import json
-import asyncio
 import random
 import re
 import traceback
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from typing import Optional, List
 
 from agent.graphs.learning_plan import build_learning_plan_graph

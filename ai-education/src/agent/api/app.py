@@ -16,12 +16,11 @@ from agent.api.routes.text_sorting import router as text_sorting
 from agent.api.routes.recommendation.recommendation import router as recommendation
 
 from agent.configs.checkpoint_config import init_checkpointer
-from agent.configs.redis_config import RedisClient, init_redis
+from agent.configs.redis_config import init_redis
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
 from agent.graphs.chat_graph import create_rag_agent
-from agent.graphs.learning_plan import build_learning_plan_graph
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
 from agent.utils.vectorDB_util import VectorDBUtil

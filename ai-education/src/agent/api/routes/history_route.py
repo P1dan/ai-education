@@ -1,5 +1,3 @@
-from typing import Optional
-
 from agent.configs.checkpoint_config import delete_thread_in_rag_agent
 from agent.configs.security_config import get_current_user_from_token
 from agent.core.entities.user_models import User

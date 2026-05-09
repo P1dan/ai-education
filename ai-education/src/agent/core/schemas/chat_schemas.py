@@ -1,4 +1,3 @@
-from langgraph_sdk.schema import SearchItemsResponse
 from pydantic import BaseModel
 from typing import Optional
 

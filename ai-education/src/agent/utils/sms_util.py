@@ -4,7 +4,7 @@ import random
 import string
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
-from typing import Tuple, Optional
+from typing import Tuple
 import os
 from dotenv import load_dotenv
 

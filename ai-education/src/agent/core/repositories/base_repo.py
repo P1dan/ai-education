@@ -1,7 +1,7 @@
 # src/core/repository/base_repository.py
 from typing import TypeVar, Type, Generic, Optional, List, Any, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, inspect, and_, or_
+from sqlalchemy import select, func, inspect
 
 # 类型变量，用于泛型
 T = TypeVar('T')
