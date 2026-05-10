@@ -10,6 +10,7 @@ from agent.api.routes.history_route import router as history_router
 from agent.api.routes.file_upload import router as file_upload_router
 from agent.api.routes.auth_route import router as auth_router
 from agent.api.routes.learning_path import router as generate_learning_path
+from agent.api.routes.lesson_plan import lesson_plan_router as lesson_plan_router
 from agent.api.routes.personalized_practice import router as personalized_practice
 from agent.api.routes.text_sorting import router as text_sorting
 
@@ -32,7 +33,7 @@ load_dotenv()
 
 # 设置 Dashscope API Key
 dashscope.api_key = os.getenv("ALIYUN_API_KEY")
-agents = {} # 构建全局agents字典，应用启动时统一加载所有agent避免并发问题
+agents = {} # 可以构建全局agents字典，应用启动时统一加载所有agent避免并发问题
 
 
 @asynccontextmanager
@@ -106,3 +107,4 @@ app.include_router(recommendation,tags=['推荐课程'])
 app.include_router(generate_learning_path,tags=["学习路径规划"])
 app.include_router(personalized_practice,tags=["个性化练习"])
 app.include_router(text_sorting,tags=['文本梳理'])
+app.include_router(lesson_plan_router, prefix="/api/lesson-plan", tags=["教案生成"])
