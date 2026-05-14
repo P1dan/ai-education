@@ -1,12 +1,9 @@
+from agent.configs.llm_configs import deepseek
 from langchain_openai import ChatOpenAI
 
 from agent.graphs.homework_correction.state import HomeworkState
 
-llm = ChatOpenAI(
-    api_key="sk-58c077b8242248dd8af6bfbe85431ba0",
-    base_url="https://api.deepseek.com/v1",  # DeepSeek API基础URL
-    model="deepseek-chat"
-)
+llm = deepseek
 
 def input_processing(state) -> HomeworkState:
     """处理用户输入"""
