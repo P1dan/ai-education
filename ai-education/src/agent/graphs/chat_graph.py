@@ -11,12 +11,12 @@ from agent.utils.log_util import log
 
 class State(MessagesState):
     """企业级RAG Agent状态管理"""
-    rag_context: Optional[str]  # 检索到的知识库内容
+    rag_context: Optional[str]  # 检索到的知识库内容（作为参考）
     final_answer: Optional[str]  # 最终答案
 
 
 async def create_rag_agent():
-    """创建学术型RAG Agent - 基于知识库检索的问答系统"""
+    """创建学术型RAG Agent - 基于知识库参考的问答系统"""
     builder = StateGraph(State)
 
     # 初始化工具
@@ -29,7 +29,7 @@ async def create_rag_agent():
     # ============ 节点定义 ============
 
     async def retrieve_knowledge(state: State):
-        """知识库检索节点 - 从RAG系统检索相关信息"""
+        """知识库检索节点 - 从RAG系统检索参考信息"""
         try:
             messages = state["messages"]
             last_message = messages[-1]
@@ -37,20 +37,20 @@ async def create_rag_agent():
 
             log.info(f"开始学术知识检索: {query[:100]}...")
 
-            # 使用RAG工具检索
+            # 使用RAG工具检索参考信息
             rag_tool = RagTool()
             tool_result = await rag_tool.ainvoke({"query": query})
 
-            log.info("知识库检索完成")
+            log.info("知识库检索完成，信息将作为回答参考")
 
             return {"rag_context": tool_result}
 
         except Exception as e:
             log.error(f"知识库检索失败: {e}")
-            return {"rag_context": "知识库检索失败，无法获取相关信息。"}
+            return {"rag_context": "知识库检索暂时不可用，将基于自身知识回答。"}
 
     async def generate_academic_answer(state: State):
-        """生成学术回答节点 - 基于检索结果生成严谨的学术回答"""
+        """生成学术回答节点 - 基于检索参考和自身知识生成学术回答"""
         try:
             messages = state["messages"]
             last_message = messages[-1]
@@ -69,10 +69,18 @@ async def create_rag_agent():
                 if history_lines:
                     history = "\n".join(history_lines) + "\n\n"
 
-            # 学术场景的提示词
-            academic_prompt = f"""你是一位严谨的学术研究助手，请基于以下检索到的学术知识回答用户问题。
+            # 判断检索结果是否有效
+            has_valid_context = len(rag_context) > 50 and "失败" not in rag_context and "不可用" not in rag_context
 
-【检索到的学术资料】
+            if has_valid_context:
+                reference_note = "【参考信息】\n以下是从知识库中检索到的相关信息，可作为回答参考："
+            else:
+                reference_note = "【说明】\n知识库检索暂时无法提供有效信息，请基于你的学术知识进行回答。"
+
+            # 学术场景的提示词 - 检索结果仅作参考
+            academic_prompt = f"""你是一位严谨的学术研究助手，请回答用户提出的学术问题。
+
+{reference_note}
 {rag_context}
 
 【对话历史】
@@ -81,18 +89,20 @@ async def create_rag_agent():
 【当前问题】
 {query}
 
-【回答要求】
-1. **学术严谨性**：回答必须基于检索到的资料，确保信息准确可靠
-2. **逻辑清晰**：采用学术论证结构，分层次阐述观点
-3. **引用来源**：重要观点需说明信息来源（如"根据检索资料显示..."）
-4. **客观中立**：避免主观臆断，不确定的内容要明确说明
-5. **专业术语**：使用规范的学术术语，首次出现时可简要解释
-6. **信息不足处理**：如果检索信息不足以回答问题，明确说明局限性，不要编造
+【回答指导原则】
+1. **参考利用**：检索到的资料可作为参考和补充，但不强制要求严格遵循
+2. **知识整合**：结合检索信息和自身学术知识，提供全面、准确的回答
+3. **学术严谨性**：确保回答的学术准确性和专业性
+4. **逻辑清晰**：采用学术论证结构，分层次阐述观点
+5. **信息标注**：如果引用检索资料中的具体内容，可注明"根据参考资料显示..."
+6. **知识补充**：对于参考资料未覆盖但相关的学术知识，可以适当补充
+7. **不确定处理**：对于不确定的内容要明确说明，避免误导
 
-【回答格式】
-- 开头：简要回应问题，表明理解
-- 主体：分点或分段阐述，逻辑递进
-- 结尾：总结核心观点，必要时提出进一步思考方向
+【回答要求】
+- 专业术语使用规范，首次出现时可简要解释
+- 回答要有深度，体现学术思考
+- 如果检索信息与自身知识有冲突，优先采用更可靠的来源
+- 保持客观中立，避免主观臆断
 
 请直接给出符合学术规范的回答："""
 
@@ -108,95 +118,108 @@ async def create_rag_agent():
             fallback = "抱歉，在处理您的学术问题时出现了技术故障。请稍后重试或重新表述您的问题。"
             return {"final_answer": fallback, "messages": [AIMessage(content=fallback)]}
 
-    async def handle_insufficient_info(state: State):
-        """处理信息不足的情况 - 引导用户提供更多信息"""
+    async def enhance_with_knowledge(state: State):
+        """知识增强节点 - 可选的信息补充节点"""
         try:
             messages = state["messages"]
             last_message = messages[-1]
             rag_context = state.get("rag_context", "")
 
-            # 判断是否为信息不足（可以根据检索结果长度或关键词判断）
-            if len(rag_context) < 100 or "未找到" in rag_context or "失败" in rag_context:
+            # 如果已有完整回答，不重复处理
+            if state.get("final_answer"):
+                return {}
+
+            # 信息不足时的智能引导
+            if len(rag_context) < 100 or "失败" in rag_context or "不可用" in rag_context:
                 query = last_message.content
 
                 guidance_prompt = f"""用户提出的学术问题：{query}
 
-检索到的信息不足，无法给出完整回答。
+知识库检索未能提供有效参考信息。
 
-请根据你的学术知识，向用户提供：
-1. 说明当前信息局限性
-2. 建议用户提供哪些更具体的信息来帮助检索
-3. 或者建议从哪个学术角度重新表述问题
+请根据你的学术知识：
+1. 直接回答用户问题（基于你的知识）
+2. 如果问题超出你的知识范围，建议用户提供更多信息或换个角度提问
+3. 保持友好、专业的学术态度
 
-给出友好、有帮助的引导性回复："""
+请给出回答："""
 
                 response = await deepseek.ainvoke([HumanMessage(content=guidance_prompt)])
-                return {"messages": [AIMessage(content=response.content)]}
-            else:
-                # 信息充足，直接使用已有的final_answer
-                return {}
+                return {"final_answer": response.content, "messages": [AIMessage(content=response.content)]}
+
+            return {}
 
         except Exception as e:
-            log.error(f"信息不足处理失败: {e}")
+            log.error(f"知识增强处理失败: {e}")
             return {}
 
     # ============ 节点注册 ============
     builder.add_node("retrieve_knowledge", retrieve_knowledge)
     builder.add_node("generate_academic_answer", generate_academic_answer)
-    builder.add_node("handle_insufficient_info", handle_insufficient_info)
+    builder.add_node("enhance_with_knowledge", enhance_with_knowledge)
 
     # ============ 构建图 ============
 
     # 开始 -> 知识库检索
     builder.add_edge(START, "retrieve_knowledge")
 
-    # 知识库检索 -> 生成学术回答
+    # 知识库检索 -> 生成学术回答（主要流程）
     builder.add_edge("retrieve_knowledge", "generate_academic_answer")
 
-    # 生成学术回答 -> 信息检查 -> 结束
-    builder.add_edge("generate_academic_answer", "handle_insufficient_info")
-    builder.add_edge("handle_insufficient_info", END)
+    # 生成学术回答 -> 知识增强（处理特殊情况）-> 结束
+    builder.add_edge("generate_academic_answer", "enhance_with_knowledge")
+    builder.add_edge("enhance_with_knowledge", END)
 
     # ============ 编译 ============
 
     checkpointer = await get_checkpointer()
     graph = builder.compile(checkpointer=checkpointer)
 
-    log.info("学术型RAG Agent（基于知识库检索）创建成功")
+    log.info("学术型RAG Agent（检索结果作为参考）创建成功")
     return graph
 
 
-# 可选的简化版本 - 更直接的RAG流程
-async def create_simple_academic_rag_agent():
-    """创建简化学术RAG Agent - 无额外处理节点"""
+# 简化的灵活版本 - 检索作为可选参考
+async def create_flexible_academic_rag_agent():
+    """创建灵活的学术RAG Agent - 检索结果作为可选参考"""
     builder = StateGraph(State)
 
     async def retrieve_and_answer(state: State):
-        """直接检索并回答"""
+        """检索参考并综合回答"""
         try:
             messages = state["messages"]
             query = messages[-1].content
 
-            # 检索
-            rag_tool = RagTool()
-            rag_context = await rag_tool.ainvoke({"query": query})
+            # 尝试检索参考信息（不强制要求成功）
+            rag_context = ""
+            try:
+                rag_tool = RagTool()
+                rag_context = await rag_tool.ainvoke({"query": query})
+                log.info(f"检索到参考信息，长度: {len(rag_context)} 字符")
+            except Exception as e:
+                log.warning(f"检索失败，将基于自身知识回答: {e}")
+                rag_context = "（检索服务暂时不可用）"
 
-            # 生成学术回答
-            academic_prompt = f"""【学术检索结果】
+            # 灵活的学术回答生成
+            flexible_prompt = f"""【参考信息】（仅供参考，不强求使用）
 {rag_context}
 
 【用户学术问题】
 {query}
 
-请作为学术助手，基于上述检索结果给出严谨、专业的回答。
-如信息不足，请明确说明。直接给出回答："""
+作为学术助手，请回答上述问题。你可以：
+- 自由运用你的学术知识
+- 参考上述信息（如果相关且有用）
+- 两者结合给出更全面的回答
 
-            response = await deepseek.ainvoke([HumanMessage(content=academic_prompt)])
+注意保持学术严谨性，不确定的内容要明确说明。请直接给出回答："""
+
+            response = await deepseek.ainvoke([HumanMessage(content=flexible_prompt)])
             return {"messages": [AIMessage(content=response.content)]}
 
         except Exception as e:
             log.error(f"RAG回答失败: {e}")
-            return {"messages": [AIMessage(content="学术检索系统暂时不可用，请稍后重试。")]}
+            return {"messages": [AIMessage(content="学术系统暂时不可用，请稍后重试。")]}
 
     builder.add_node("retrieve_and_answer", retrieve_and_answer)
     builder.add_edge(START, "retrieve_and_answer")
@@ -204,6 +227,4 @@ async def create_simple_academic_rag_agent():
 
     checkpointer = await get_checkpointer()
     graph = builder.compile(checkpointer=checkpointer)
-
-    log.info("简化学术RAG Agent创建成功")
     return graph
