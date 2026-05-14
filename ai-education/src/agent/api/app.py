@@ -13,6 +13,7 @@ from agent.api.routes.learning_path import router as generate_learning_path
 from agent.api.routes.lesson_plan import lesson_plan_router as lesson_plan_router
 from agent.api.routes.personalized_practice import router as personalized_practice
 from agent.api.routes.text_sorting import router as text_sorting
+from agent.api.routes.homework_correction import router as homework_correction
 
 from agent.api.routes.recommendation.recommendation import router as recommendation
 
@@ -64,9 +65,6 @@ async def lifespan(app : FastAPI):
     # 初始化agents
     agents['rag_agent'] = await create_rag_agent()
 
-
-    # todo 这里可以添加其他初始化逻辑
-
     log.success("✅ 应用启动完成")
 
     # 应用运行期间
@@ -108,3 +106,4 @@ app.include_router(generate_learning_path,tags=["学习路径规划"])
 app.include_router(personalized_practice,tags=["个性化练习"])
 app.include_router(text_sorting,tags=['文本梳理'])
 app.include_router(lesson_plan_router, prefix="/api/lesson-plan", tags=["教案生成"])
+app.include_router(homework_correction,tags=["作业批改"])

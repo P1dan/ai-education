@@ -14,9 +14,11 @@ deepseek = ChatOpenAI(
     base_url=MODEL_API_URL
 )
 
-intent_classify = ChatOpenAI(
-    model="tongyi-intent-detect-v3",
-    temperature=1.3,
-    api_key=MODEL_API_KEY,
-    base_url=MODEL_API_URL
-)
+# from langchain_community.llms import Ollama
+#
+# llm = Ollama(
+#     model="deepseek-r1:7b",     # 模型名，与你用ollama pull下载的完全一致
+#     base_url="http://localhost:11434", # Ollama服务默认地址
+#     temperature=1.3,
+#     num_ctx=4096                # 可选：设置上下文长度
+# )
