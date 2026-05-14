@@ -1,8 +1,6 @@
 # services/file_service.py
 
 from fastapi import UploadFile
-from sqlalchemy.testing.suite.test_reflection import metadata
-
 from agent.utils.file_util import FileUtil
 from agent.utils.vectorDB_util import VectorDBUtil
 

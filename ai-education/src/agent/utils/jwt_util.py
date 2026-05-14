@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 # 配置（实际应从配置文件读取）
 SECRET_KEY = "your-secret-key-change-in-production"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30  # token有效期30分钟
+ACCESS_TOKEN_EXPIRE_MINUTES = 300  # token有效期30分钟
 
 class JWTUtil:
     """JWT工具类"""

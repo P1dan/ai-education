@@ -7,14 +7,22 @@ from starlette.middleware.cors import CORSMiddleware
 
 from agent.api.routes.chat_route import router as chat_router
 from agent.api.routes.history_route import router as history_router
-from agent.api.routes.ai_assistant_route import router as ai_assistant_router
+from agent.api.routes.file_upload import router as file_upload_router
 from agent.api.routes.auth_route import router as auth_router
+from agent.api.routes.learning_path import router as generate_learning_path
+from agent.api.routes.lesson_plan import lesson_plan_router as lesson_plan_router
+from agent.api.routes.personalized_practice import router as personalized_practice
+from agent.api.routes.text_sorting import router as text_sorting
+from agent.api.routes.homework_correction import router as homework_correction
+
+from agent.api.routes.recommendation.recommendation import router as recommendation
+
 from agent.configs.checkpoint_config import init_checkpointer
-from agent.configs.redis_config import RedisClient, init_redis
+from agent.configs.redis_config import init_redis
 from agent.configs.thread_pool_config import init_thread_pool
 import os
 
-from agent.graphs.ai_assistant_graph import create_rag_agent
+from agent.graphs.chat_graph import create_rag_agent
 from agent.utils.log_util import log
 from agent.utils.rationalDB_util import RelationalDBUtil
 from agent.utils.vectorDB_util import VectorDBUtil
@@ -26,7 +34,7 @@ load_dotenv()
 
 # 设置 Dashscope API Key
 dashscope.api_key = os.getenv("ALIYUN_API_KEY")
-agents = {} # 构建全局agents字典，应用启动时统一加载所有agent避免并发问题
+agents = {} # 可以构建全局agents字典，应用启动时统一加载所有agent避免并发问题
 
 
 @asynccontextmanager
@@ -37,6 +45,9 @@ async def lifespan(app : FastAPI):
     """
     # 启动时执行
     log.info("🚀 应用启动中...")
+
+    # 初始化线程池
+    init_thread_pool()
 
     # 初始化检查点
     await init_checkpointer()
@@ -53,11 +64,6 @@ async def lifespan(app : FastAPI):
 
     # 初始化agents
     agents['rag_agent'] = await create_rag_agent()
-    log.success("agents初始化成功")
-    # 初始化线程池
-    init_thread_pool()
-
-    # todo 这里可以添加其他初始化逻辑
 
     log.success("✅ 应用启动完成")
 
@@ -91,9 +97,13 @@ app.add_middleware(
 # 注册聊天路由
 app.include_router(chat_router, prefix="/api/chat_conversation", tags=["聊天会话"])
 app.include_router(history_router, prefix="/api/history_conversation", tags=["历史记录"])
-app.include_router(ai_assistant_router, prefix="/api/ai_assistant", tags=["AI助教"])
+app.include_router(file_upload_router, prefix="/api/ai_assistant", tags=["AI助教"])
 app.include_router(auth_router, prefix="/api/auth", tags=["注册登录"])
 
-@app.get("/")
-async def root():
-    return {"message": "AI教育助手API运行中"}
+app.include_router(recommendation,tags=['推荐课程'])
+
+app.include_router(generate_learning_path,tags=["学习路径规划"])
+app.include_router(personalized_practice,tags=["个性化练习"])
+app.include_router(text_sorting,tags=['文本梳理'])
+app.include_router(lesson_plan_router, prefix="/api/lesson-plan", tags=["教案生成"])
+app.include_router(homework_correction,tags=["作业批改"])

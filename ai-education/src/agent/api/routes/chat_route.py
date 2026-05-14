@@ -1,25 +1,18 @@
 import json
-import time
 from typing import Optional
 
 from agent.configs.security_config import get_current_user_from_token
 from agent.core.entities.user_models import User
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-import uuid
-from langchain_core.messages import HumanMessage, AIMessage
 from fastapi import APIRouter, Depends
-from requests import request
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
-
-from agent.core.repositories import ThreadRepository, MessageRepository
 from agent.core.schemas.chat_schemas import ChatRequest
 from agent.core.services.ai_chat_service import AIChatService
 
 from agent.utils.log_util import log
-from agent.utils.rationalDB_util import RelationalDBUtil, get_db
+from agent.utils.rationalDB_util import get_db
 
 # 基本聊天接口
 # todo 看一下能不能把db获取独立出来（保留吧，一个请求级别的单例，不同请求互相隔离）

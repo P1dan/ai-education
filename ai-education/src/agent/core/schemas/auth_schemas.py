@@ -8,15 +8,15 @@ class LoginRequest(BaseModel):
     """
     登录的时候的参数
     """
-    phone: str
+    email: str
     password: Optional[str] = None
-    verify_code: Optional[str] = None  # 验证码登录时的验证码
+    code: Optional[str] = None  # 验证码登录时的验证码
 
 
 class RegisterRequest(BaseModel):
     """
     注册的时候的参数
     """
-    phone: str
+    email: str
     password: str
     role: Optional[UserRole] = UserRole.STUDENT

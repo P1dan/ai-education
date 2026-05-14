@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
-from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, Enum, JSON, ForeignKey, Index, BigInteger
+from typing import Dict, Any
+from sqlalchemy import Column, String, Integer, Text, Boolean, Enum, JSON, ForeignKey, Index, BigInteger
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 import enum
 
 from agent.core.entities.base import Base
