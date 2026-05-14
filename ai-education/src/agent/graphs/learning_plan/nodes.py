@@ -1,7 +1,6 @@
 import asyncio
 import json
 from http.client import responses
-from msilib import schema
 
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
